@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CranePicker } from '@/components/CranePicker';
 import { Diagram } from '@/components/Diagram';
 import { Badge, Button, Card, Chip, Footer, NumberField, SliderField, StepBar, T, VerdictBadge, fmt } from '@/components/ui';
 import { CraneEval, FAIL_LABEL, MAX_SETBACK, maxChartRadius, minSetback, sortCranes } from '@/lib/calc';
@@ -19,7 +20,7 @@ export default function SettingsScreen() {
   const [more, setMore] = useState(false);
   const [compare, setCompare] = useState(false);
 
-  // Pin to the crane recommended when this screen was entered. After that the crane changes only via UP/DN or the comparison list.
+  // Pin to the crane recommended when this screen was entered. After that the crane changes only via the picker, UP/DN or the comparison list.
   useEffect(() => {
     if (craneId) setCraneId(craneId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -41,15 +42,10 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.body}>
         <StepBar step={1} />
 
+        <CranePicker craneId={crane.id} onSelect={(id) => { setCraneId(id); setNote(null); }} />
         <View style={styles.grid}>
-          <View style={{ flex: 1.6, gap: space.sm }}>
-            <TypeBtn label="이동식 크레인" active />
-            <TypeBtn label="이동타워 크레인" sub="하중표 준비 중" />
-          </View>
-          <View style={{ flex: 1, gap: space.sm }}>
-            <StepBtn label="▲ UP" sub="큰 장비" tone={color.ok} disabled={idx === ORDER.length - 1} onPress={() => onStep(1)} />
-            <StepBtn label="▼ DN" sub="작은 장비" tone={color.no} disabled={idx === 0} onPress={() => onStep(-1)} />
-          </View>
+          <StepBtn label="▲ UP" sub="한 단계 큰 장비" tone={color.ok} disabled={idx === ORDER.length - 1} onPress={() => onStep(1)} />
+          <StepBtn label="▼ DN" sub="한 단계 작은 장비" tone={color.no} disabled={idx === 0} onPress={() => onStep(-1)} />
         </View>
         <Button label="✦  최대거리 자동계산" onPress={onAuto} />
         {note ? <T tone={color.no}>{note}</T> : null}
@@ -138,18 +134,9 @@ function OverlayLine({ k, v }: { k: string; v: string }) {
   );
 }
 
-function TypeBtn({ label, sub, active }: { label: string; sub?: string; active?: boolean }) {
-  return (
-    <View accessibilityRole="button" accessibilityState={{ selected: !!active, disabled: !active }} style={[styles.type, active ? { backgroundColor: color.yellow } : { opacity: 0.55 }]}>
-      <Text style={{ fontFamily: font.bold, fontSize: 15, color: color.charcoal }}>{label}</Text>
-      {sub ? <Text style={{ fontFamily: font.body, fontSize: 10, color: color.muted }}>{sub}</Text> : null}
-    </View>
-  );
-}
-
 function StepBtn({ label, sub, tone, onPress, disabled }: { label: string; sub: string; tone: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${label} ${sub}`} onPress={onPress} disabled={disabled} style={({ pressed }) => [styles.type, { borderWidth: 1.5, borderColor: tone, backgroundColor: pressed ? color.yellowSoft : color.surface }, disabled && { opacity: 0.35 }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${label} ${sub}`} onPress={onPress} disabled={disabled} style={({ pressed }) => [styles.type, { flex: 1 }, { borderWidth: 1.5, borderColor: tone, backgroundColor: pressed ? color.yellowSoft : color.surface }, disabled && { opacity: 0.35 }]}>
       <Text style={{ fontFamily: font.bold, fontSize: 16, color: tone }}>{label}</Text>
       <Text style={{ fontFamily: font.body, fontSize: 10, color: color.muted }}>{sub}</Text>
     </Pressable>
