@@ -6,6 +6,8 @@ import { CraneMark } from '@/components/CraneMark';
 import { RecentRow } from '@/components/RecentRow';
 import { Button, Card, Section, T } from '@/components/ui';
 import { DEFAULT_INPUT } from '@/lib/calc';
+import { CATALOG } from '@/lib/catalog';
+import { CRANES } from '@/lib/cranes';
 import { loadReviews, SavedReview } from '@/lib/history';
 import { useReview } from '@/lib/review-context';
 import { color, space } from '@/theme';
@@ -31,10 +33,10 @@ export default function Home() {
         <View style={styles.hero}>
           <CraneMark size={72} />
           <T variant="display" style={{ marginTop: space.lg }}>
-            양중노트
+            리프팅 플랜
           </T>
           <T variant="label" tone="#5A4500" style={{ letterSpacing: 4 }}>
-            LIFTNOTE
+            LIFTING PLAN
           </T>
           <T variant="title" style={{ marginTop: space.md }}>
             근거가 남는 양중 검토
@@ -60,7 +62,7 @@ export default function Home() {
         </Section>
 
         <T variant="caption">
-          현재 장비 데이터는 개발용 샘플입니다. 실제 하중표로 바꾸기 전에는 현장 검토에 쓰지 마세요.
+          장비 제원표에는 5개 제조사 200t 이하 {CATALOG.length}개 기종이 있습니다. 검토 계산은 하중표가 등록된 {CRANES.length}개 기종으로만 하며, 하중표는 공식 PDF 추출본이라 원본 대조 전입니다.
         </T>
       </ScrollView>
     </View>

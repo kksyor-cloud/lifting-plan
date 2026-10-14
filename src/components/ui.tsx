@@ -159,8 +159,8 @@ export function VerdictBadge({ verdict, size = 'md' }: { verdict: Verdict; size?
 export function KV({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
   return (
     <View style={styles.kv}>
-      <T style={{ color: color.muted, flexShrink: 1 }}>{k}</T>
-      <T variant="mono" style={strong ? { fontSize: 16 } : undefined}>
+      <T style={{ color: color.muted, flexShrink: 1, minWidth: '28%' }}>{k}</T>
+      <T variant="mono" style={[{ flexShrink: 1, textAlign: 'right' }, strong ? { fontSize: 16 } : null]}>
         {v}
       </T>
     </View>
@@ -179,6 +179,16 @@ export function StepBar({ step }: { step: 0 | 1 | 2 }) {
           </Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+export function Badge({ label, kind }: { label: string; kind: 'yellow' | 'outline' | 'grey' | 'green' }) {
+  const bg = { yellow: color.yellow, outline: 'transparent', grey: color.line, green: color.ok }[kind];
+  const fg = { yellow: color.charcoal, outline: color.muted, grey: color.muted, green: '#FFFFFF' }[kind];
+  return (
+    <View style={[styles.badge, { backgroundColor: bg }, kind === 'outline' && { borderWidth: 1, borderColor: color.warm }]}>
+      <T style={{ fontFamily: font.bold, fontSize: 11, lineHeight: 16, color: fg }}>{label}</T>
     </View>
   );
 }
@@ -207,5 +217,6 @@ const styles = StyleSheet.create({
   kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, gap: space.md },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: space.lg, gap: space.sm, backgroundColor: color.paper, borderTopWidth: 1, borderTopColor: color.line },
   stepBar: { flexDirection: 'row', gap: 6 },
+  badge: { paddingHorizontal: 6, borderRadius: 4, alignSelf: 'flex-start' },
   step: { flex: 1, height: 36, borderRadius: radius.sm, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
 });

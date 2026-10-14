@@ -1,8 +1,17 @@
-# 양중노트 (LIFTNOTE)
+# 리프팅 플랜 (LIFTING PLAN)
 
 크레인 양중 사전 검토 앱. Expo SDK 57, React Native, TypeScript, Expo Router.
 
-> 장비 데이터(`src/lib/cranes.ts`)는 개발용 **샘플**입니다. 실제 제조사 하중표로 바꾸기 전에는 현장 검토에 쓰면 안 됩니다.
+> 장비 제원표는 5개 제조사(KATO·LIEBHERR·TADANO·GROVE·KOBELCO) 200t 이하 292개 기종의 실제 제원입니다(`src/data/catalog.json`).
+> 검토 계산은 하중표가 등록된 Tadano GR-N 5개 기종만 쓰며, 하중표는 공식 PDF 추출본이라 **원본 대조 전**입니다. 대조를 마치기 전에는 현장 검토에 쓰면 안 됩니다.
+
+## 장비 데이터 갱신
+
+```bash
+python3 scripts/sync-catalog.py   # /mnt/project-files/catalog/cranes.json -> src/data/catalog.json
+```
+
+하중표가 있는 기종을 검토 계산에 넣으려면 `src/lib/cranes.ts` 의 `PARAMS` 에 붐 피벗 높이와 훅 블록 질량을 추가합니다.
 
 ## 실행
 
@@ -23,10 +32,11 @@ src/
     review/select.tsx  2. 장비 선택 (후보 비교 + 측면도)
     review/result.tsx  3. 검토 결과 (검토서)
     history.tsx        검토 기록
-    equipment.tsx      장비 제원표
+    equipment/         장비 제원표 (목록 필터·검색, 기종 상세)
   lib/
     calc.ts            양중 계산 (순수 함수, 테스트 대상)
-    cranes.ts          장비 제원·하중표 (샘플)
+    catalog.ts         장비 카탈로그 (292종 제원, 필터)
+    cranes.ts          검토 계산용 장비 (하중표 등록 기종)
     review-context.tsx 검토 한 건의 단일 상태
     history.ts         기록 저장 (AsyncStorage)
   components/          공용 UI, 측면도, 크레인 마크
@@ -45,6 +55,6 @@ src/
 
 ## 다음 할 일
 
-- 실제 하중표 데이터와 출처·버전 입력
+- 하중표 원본 대조 (Tadano GR-N 5종), 다른 기종 하중표 등록
 - 검토서 PDF 내보내기
 - 이동타워 크레인, 아웃리거 반력·지반 검토

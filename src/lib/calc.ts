@@ -40,6 +40,8 @@ export type CraneEval = {
   /** 적용한 하중표 행 */
   chartBoomLength: number;
   chartRadius: number;
+  /** 적용한 하중표 칸이 원본 대조를 마친 값인지 */
+  chartVerified: boolean;
   /** 정격하중 (t) */
   capacity: number;
   /** 자재 + 줄걸이 + 훅 블록 (t) */
@@ -101,12 +103,13 @@ export function lookupCapacity(
   chart: LoadChartRow[],
   boomLength: number,
   radius: number,
-): { capacity: number; chartBoomLength: number; chartRadius: number } | null {
+): { capacity: number; chartBoomLength: number; chartRadius: number; chartVerified: boolean } | null {
   const row = chart.find((r) => r.boomLength >= boomLength - 1e-9);
   if (!row) return null;
   const cell = row.capacities.find(([r]) => r >= radius - 1e-9);
   if (!cell) return null;
-  return { capacity: cell[1], chartBoomLength: row.boomLength, chartRadius: cell[0] };
+  const chartVerified = !(row.unverified ?? []).includes(cell[0]);
+  return { capacity: cell[1], chartBoomLength: row.boomLength, chartRadius: cell[0], chartVerified };
 }
 
 type Geometry = { angle: number; tip: number; wallClearance: number };
@@ -135,20 +138,27 @@ export function evaluateCrane(crane: Crane, input: ReviewInput): CraneEval {
     wallClearance: 0,
     chartBoomLength: 0,
     chartRadius: 0,
+    chartVerified: true,
     capacity: 0,
     ratio: Infinity,
   };
 
   // 조건을 만족하는 가장 짧은 붐 길이를 0.1m 단위로 찾는다.
+  // 그 붐에 해당하는 하중표 칸이 없으면 더 긴 붐 중 하중표가 있는 길이를 쓴다.
   let found: { L: number; g: Geometry } | null = null;
+  let cap: ReturnType<typeof lookupCapacity> = null;
   for (let L = crane.boomMin; L <= crane.boomMax + 1e-9; L = Math.round((L + 0.1) * 10) / 10) {
     const g = geometry(crane, L, R, input.setback, H);
     if (!g) continue;
     if (g.angle < crane.minAngle || g.angle > crane.maxAngle) continue;
     if (g.tip < need) continue;
     if (g.wallClearance < MIN_WALL_CLEARANCE) continue;
-    found = { L, g };
-    break;
+    found ??= { L, g };
+    cap = lookupCapacity(crane.chart, L, R);
+    if (cap) {
+      found = { L, g };
+      break;
+    }
   }
 
   if (!found) {
@@ -168,7 +178,6 @@ export function evaluateCrane(crane: Crane, input: ReviewInput): CraneEval {
 
   const { L, g } = found;
   const geo = { boomLength: L, boomAngle: g.angle, tipHeight: g.tip, topClearance: g.tip - H, wallClearance: g.wallClearance };
-  const cap = lookupCapacity(crane.chart, L, R);
   if (!cap) {
     return { ...base, ...geo, feasible: false, reason: 'chart', verdict: 'no' };
   }
@@ -193,7 +202,7 @@ export const FAIL_LABEL: Record<FailReason, string> = {
   radius: '작업반경이 붐 길이를 넘음',
   height: '붐 끝 높이 부족',
   clearance: '건물 모서리와 붐 간섭',
-  chart: '하중표 범위 밖',
+  chart: '등록된 하중표에 해당 칸 없음',
 };
 
 export const VERDICT_LABEL: Record<Verdict, string> = { ok: '가능', warn: '주의', no: '불가' };

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Diagram } from '@/components/Diagram';
-import { Button, Card, Footer, KV, Section, StepBar, T, VerdictBadge, fmt } from '@/components/ui';
+import { Badge, Button, Card, Footer, KV, Section, StepBar, T, VerdictBadge, fmt } from '@/components/ui';
 import { CraneEval, FAIL_LABEL } from '@/lib/calc';
 import { useReview } from '@/lib/review-context';
 import { color, font, radius, space } from '@/theme';
@@ -23,6 +23,11 @@ export default function SelectScreen() {
           <Diagram input={input} ev={selected} />
           <KV k="하중률 (훅블록·줄걸이 포함)" v={selected.feasible ? `${fmt.pct(selected.ratio)} · ${fmt.t(selected.totalLoad)} / ${fmt.t(selected.capacity)}` : '—'} />
           {selected.reason ? <T tone={color.no}>{FAIL_LABEL[selected.reason]}</T> : null}
+          {selected.feasible && !selected.chartVerified ? (
+            <T variant="caption" tone={color.warn}>
+              적용한 하중표 칸(붐 {selected.chartBoomLength}m, 반경 {selected.chartRadius}m)은 원본 PDF 대조가 필요합니다.
+            </T>
+          ) : null}
         </Card>
 
         <Section label={`후보 장비 ${result.evals.length}대 비교`}>
@@ -30,6 +35,9 @@ export default function SelectScreen() {
             <CandidateRow key={e.crane.id} ev={e} active={e.crane.id === selected.crane.id} recommended={e.crane.id === result.recommendedId} onPress={() => setCraneId(e.crane.id)} />
           ))}
           {result.recommendedId === null ? <T tone={color.no}>조건을 만족하는 장비가 없습니다. 이격거리나 도달거리를 줄여 보세요.</T> : null}
+          <T variant="caption">
+            하중표가 등록된 {result.evals.length}개 기종으로 계산합니다. 다른 기종은 장비 제원표에서 제원과 공식 PDF를 볼 수 있습니다.
+          </T>
         </Section>
       </ScrollView>
       <Footer>
@@ -45,6 +53,7 @@ function CandidateRow({ ev, active, recommended, onPress }: { ev: CraneEval; act
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
           <T style={{ fontFamily: font.bold }}>{ev.crane.name}</T>
+          {ev.feasible && !ev.chartVerified ? <Badge label="원본 대조" kind="outline" /> : null}
           {recommended ? (
             <View style={styles.tag}>
               <T variant="caption" tone={color.charcoal} style={{ fontFamily: font.bold }}>

@@ -1,4 +1,4 @@
-// 양중노트 브랜드 토큰. /mnt/project-files/branding/liftnote-brand-guide.md 기준.
+// 리프팅 플랜 브랜드 토큰. /mnt/project-files/branding/liftnote-brand-guide.md 기준.
 export const color = {
   yellow: '#FFC21A',
   yellowDeep: '#8A6200', // 흰 바탕 위 노란 계열 글자

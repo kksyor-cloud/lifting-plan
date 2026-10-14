@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "양중노트",
-    "slug": "liftnote",
+    "name": "리프팅 플랜",
+    "slug": "lifting-plan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.liftnote.app"
+      "bundleIdentifier": "com.liftingplan.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,13 +18,13 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.liftnote.app"
+      "package": "com.liftingplan.app"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "scheme": "liftnote",
+    "scheme": "liftingplan",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

@@ -1,17 +1,17 @@
 import { describe, expect, it } from '@jest/globals';
 import { DEFAULT_INPUT, evaluateCrane, lookupCapacity, requiredTipHeight, review, slingFor, ReviewInput } from '../calc';
-import { CRANES, findCrane } from '../cranes';
+import { SAMPLE_CRANES as CRANES, sample } from '../__fixtures__/cranes';
 
-const c25 = findCrane('sample-25')!;
+const c25 = sample('sample-25');
 const input = (over: Partial<ReviewInput> = {}): ReviewInput => ({ ...DEFAULT_INPUT, ...over });
 
 describe('lookupCapacity', () => {
   const chart = c25.chart;
   it('uses the next longer boom row and the next farther radius', () => {
-    expect(lookupCapacity(chart, 17, 9)).toEqual({ capacity: 5.2, chartBoomLength: 23.8, chartRadius: 10 });
+    expect(lookupCapacity(chart, 17, 9)).toEqual({ capacity: 5.2, chartBoomLength: 23.8, chartRadius: 10, chartVerified: true });
   });
   it('matches exact table points', () => {
-    expect(lookupCapacity(chart, 16.6, 8)).toEqual({ capacity: 7.6, chartBoomLength: 16.6, chartRadius: 8 });
+    expect(lookupCapacity(chart, 16.6, 8)).toEqual({ capacity: 7.6, chartBoomLength: 16.6, chartRadius: 8, chartVerified: true });
   });
   it('returns null outside the chart', () => {
     expect(lookupCapacity(chart, 40, 5)).toBeNull();
@@ -80,16 +80,30 @@ describe('evaluateCrane', () => {
 
 describe('review', () => {
   it('evaluates every crane, smallest first, and recommends the smallest ok one', () => {
-    const r = review(input());
+    const r = review(input(), CRANES);
     expect(r.evals.map((e) => e.crane.classTon)).toEqual([...CRANES].map((c) => c.classTon).sort((a, b) => a - b));
     const firstOk = r.evals.find((e) => e.verdict === 'ok');
     expect(r.recommendedId).toBe(firstOk?.crane.id ?? null);
   });
   it('moves the recommendation up when the small crane is overloaded', () => {
-    const r = review(input({ loadWeight: 8 }));
+    const r = review(input({ loadWeight: 8 }), CRANES);
     expect(r.recommendedId).not.toBe('sample-25');
   });
   it('recommends nothing when no crane can do it', () => {
-    expect(review(input({ buildingHeight: 90, loadWeight: 60 })).recommendedId).toBeNull();
+    expect(review(input({ buildingHeight: 90, loadWeight: 60 }), CRANES).recommendedId).toBeNull();
+  });
+});
+
+describe('evaluateCrane with gaps in the chart', () => {
+  it('uses a longer boom when the shortest boom has no chart cell', () => {
+    const gappy = { ...c25, chart: c25.chart.map((r) => (r.boomLength === 23.8 ? { ...r, capacities: [] as [number, number][] } : r)) };
+    const full = evaluateCrane(c25, input());
+    const e = evaluateCrane(gappy, input());
+    if (full.chartBoomLength === 23.8) {
+      expect(e.feasible).toBe(true);
+      expect(e.chartBoomLength).toBe(31);
+      expect(e.boomLength).toBeGreaterThan(23.8);
+    }
+    expect(e.capacity).toBeLessThanOrEqual(full.capacity);
   });
 });

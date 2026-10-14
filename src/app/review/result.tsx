@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Diagram } from '@/components/Diagram';
 import { Button, Card, Footer, KV, Section, StepBar, T, VerdictBadge, fmt } from '@/components/ui';
 import { DEFAULT_INPUT, FAIL_LABEL, HOOK_ALLOWANCE, MIN_WALL_CLEARANCE, ROOF_MARGIN, WARN_RATIO } from '@/lib/calc';
@@ -37,6 +37,9 @@ export default function ResultScreen() {
             <VerdictBadge verdict={ev.verdict} size="lg" />
           </View>
           {ev.reason ? <T tone={color.no}>{FAIL_LABEL[ev.reason]}</T> : null}
+          {ev.feasible && !ev.chartVerified ? (
+            <T tone={color.warn}>적용한 하중표 칸은 PDF 추출값이라 원본 대조가 필요합니다.</T>
+          ) : null}
           <Diagram input={input} ev={ev} />
         </Card>
 
@@ -78,15 +81,24 @@ export default function ResultScreen() {
 
         <Section label="장비 기본 제원">
           <Card style={{ gap: 0 }}>
+            <KV k="장비" v={ev.crane.name} />
             <KV k="등급" v={`${ev.crane.classTon} t`} />
             <KV k="붐 길이" v={`${ev.crane.boomMin} ~ ${ev.crane.boomMax} m`} />
             <KV k="아웃리거 폭" v={fmt.m(ev.crane.outriggerSpan)} />
             <KV k="자체 중량" v={`${ev.crane.selfWeight} t`} />
+            {ev.crane.assumed.length ? <KV k="가정값" v={ev.crane.assumed.join(', ')} /> : null}
           </Card>
         </Section>
 
         <View style={styles.source}>
           <T variant="caption">하중표: {ev.crane.source}</T>
+          {ev.crane.chartDoc ? (
+            <Pressable accessibilityRole="link" onPress={() => Linking.openURL(ev.crane.chartDoc!)}>
+              <T variant="caption" tone={color.yellowDeep} style={{ fontFamily: font.medium }}>
+                하중표 원본 PDF 열기 ↗
+              </T>
+            </Pressable>
+          ) : null}
           <T variant="caption">
             판정 기준: 하중률 {Math.round(WARN_RATIO * 100)}% 이하 가능, 100% 이하 주의, 초과 불가. 하중표는 같거나 긴 붐, 같거나 먼 반경 칸을 적용(보수적).
           </T>
