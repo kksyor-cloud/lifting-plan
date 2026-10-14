@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { Button, Card, Chip, Footer, NumberField, Section, StepBar, T } from '@/components/ui';
+import { BEARING_PRESETS, PAD_PRESETS } from '@/lib/ground';
 import { useReview } from '@/lib/review-context';
 import { color, font, radius, space } from '@/theme';
 
@@ -71,6 +72,20 @@ export default function InputScreen() {
           <NumberField label="건물 이격거리" hint="크레인 중심 ~ 외벽" unit="m" value={input.setback} onChange={(setback) => setInput({ setback })} big={1} small={0.5} min={2} max={60} />
           <NumberField label="도달거리" hint="외벽 ~ 인양 지점" unit="m" value={input.reach} onChange={(reach) => setInput({ reach })} big={1} small={0.5} min={0} max={60} />
           <T variant="caption">작업반경 = 이격거리 + 도달거리 = {(input.setback + input.reach).toFixed(1)} m</T>
+        </Section>
+
+        <Section label="지반 (아웃리거 받침)">
+          <View style={styles.chips}>
+            {BEARING_PRESETS.map((b) => (
+              <Chip key={b.label} label={`${b.label} ${b.value}`} active={input.groundBearing === b.value} onPress={() => setInput({ groundBearing: b.value })} />
+            ))}
+          </View>
+          <NumberField label="허용 지지력" hint="지반조사 값이 있으면 그 값" unit="kN/m²" value={input.groundBearing} onChange={(groundBearing) => setInput({ groundBearing })} big={50} small={10} min={10} max={2000} digits={0} />
+          <View style={styles.chips}>
+            {PAD_PRESETS.map((p) => (
+              <Chip key={p} label={`받침판 ${p.toFixed(1)}m`} active={input.padSize === p} onPress={() => setInput({ padSize: p })} />
+            ))}
+          </View>
         </Section>
 
         <Section

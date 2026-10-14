@@ -4,6 +4,9 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Diagram } from '@/components/Diagram';
 import { Button, Card, Footer, KV, Section, StepBar, T, VerdictBadge, fmt } from '@/components/ui';
 import { DEFAULT_INPUT, FAIL_LABEL, HOOK_ALLOWANCE, MIN_WALL_CLEARANCE, ROOF_MARGIN, WARN_RATIO } from '@/lib/calc';
+import { exportReport } from '@/lib/export-report';
+import { REACTION_SHARE } from '@/lib/ground';
+import { reportHtml } from '@/lib/report';
 import { saveReview } from '@/lib/history';
 import { useReview } from '@/lib/review-context';
 import { color, font, space } from '@/theme';
@@ -13,6 +16,16 @@ export default function ResultScreen() {
   const ev = result.evals.find((e) => e.crane.id === craneId) ?? result.evals[0];
   const [saved, setSaved] = useState(false);
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+
+  const [exporting, setExporting] = useState(false);
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      await exportReport(reportHtml(input, result, ev, today), `${input.siteName || '양중'} 검토서`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const save = async () => {
     await saveReview(input, ev.crane.id);
@@ -79,6 +92,22 @@ export default function ResultScreen() {
           </Section>
         ) : null}
 
+        {ev.ground ? (
+          <Section label="아웃리거 반력·지반 (간이)" right={<VerdictBadge verdict={ev.ground.verdict} />}>
+            <Card style={{ gap: 0 }}>
+              <KV k="추정 최대 반력" v={`${fmt.t(ev.ground.reaction)} (${ev.ground.reactionKN.toFixed(0)} kN)`} />
+              <KV k="받침판" v={`${input.padSize} × ${input.padSize} m`} />
+              <KV k="접지압" v={`${ev.ground.pressure.toFixed(0)} kN/m²`} strong />
+              <KV k="허용 지지력" v={`${ev.ground.bearing} kN/m²`} />
+              <KV k="지지력 대비" v={fmt.pct(ev.ground.ratio)} strong />
+              <KV k="필요 받침판 (최소)" v={`${ev.ground.requiredPad.toFixed(2)} m 각`} />
+            </Card>
+            <T variant="caption">
+              최대 반력 = {REACTION_SHARE * 100}% × (장비 중량 + 인양 하중) 간이 추정입니다. 제조사 반력표로 확인하세요.
+            </T>
+          </Section>
+        ) : null}
+
         <Section label="장비 기본 제원">
           <Card style={{ gap: 0 }}>
             <KV k="장비" v={ev.crane.name} />
@@ -112,8 +141,8 @@ export default function ResultScreen() {
       </ScrollView>
       <Footer>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <Button label="이전으로" kind="secondary" onPress={() => router.back()} style={{ flex: 1 }} />
-          <Button label={saved ? '저장됨' : '검토 저장'} disabled={saved} onPress={save} style={{ flex: 2 }} />
+          <Button label={exporting ? 'PDF 만드는 중' : 'PDF 내보내기'} kind="secondary" disabled={exporting} onPress={exportPdf} style={{ flex: 1 }} />
+          <Button label={saved ? '저장됨' : '검토 저장'} disabled={saved} onPress={save} style={{ flex: 1 }} />
         </View>
         <Button
           label="새 검토"

@@ -2,7 +2,7 @@
 //
 // 하중표는 제조사 공식 PDF 텍스트를 두 번 읽어 일치한 값이며, 열 배치는 재구성이라 원본 육안 대조 전이다. verify 행은
 // 칸 정렬이 확실하지 않아, 그 칸을 쓴 결과에는 "원본 대조 필요"를 붙인다.
-// 붐 피벗 높이와 붐 각도 범위는 제원표에 없어 가정값을 쓴다 (assumed 에 기록).
+// 붐 피벗 높이와 최소 붐 각도는 제원표에 없어 가정값을 쓴다 (assumed 에 기록).
 import { CATALOG, CatalogChart, CatalogEntry, firstNumber, makerLabel } from './catalog';
 
 export type LoadChartRow = {
@@ -60,21 +60,21 @@ export function chartToRows(chart: CatalogChart): LoadChartRow[] {
   });
 }
 
-// 제원표에 없는 값. 훅 블록은 제원표의 주훅(용구 포함) 질량, 피벗 높이는 차체 높이 기준 가정.
-const PARAMS: Record<string, { pivotHeight: number; hookBlockWeight: number }> = {
-  'tadano-gr-160n': { pivotHeight: 1.9, hookBlockWeight: 0.14 },
-  'tadano-gr-250n': { pivotHeight: 2.1, hookBlockWeight: 0.22 },
-  'tadano-gr-350n': { pivotHeight: 2.2, hookBlockWeight: 0.31 },
-  'tadano-gr-500n': { pivotHeight: 2.3, hookBlockWeight: 0.46 },
-  'tadano-gr-700n': { pivotHeight: 2.4, hookBlockWeight: 0.34 },
-};
+/** 실제 운용 최소 붐 각도 (하중표 범위와 별개로 두는 가정값) */
 const MIN_ANGLE = 15;
-const MAX_ANGLE = 80;
+const DEFAULT_MAX_ANGLE = 80;
+/** 붐 피벗 높이 가정: 제원표에 없어서 장비 등급으로 어림한다 */
+export const pivotEstimate = (classTon: number) => Math.round((1.8 + 0.008 * classTon) * 10) / 10;
 
 export function toCrane(e: CatalogEntry): Crane | null {
-  const p = PARAMS[e.id];
-  if (!e.chart || !p) return null;
+  if (!e.chart || e.chart.boomLengths.length === 0) return null;
   const chart = chartToRows(e.chart);
+  const pivotHeight = pivotEstimate(e.classTon);
+  const maxAngle = e.chart.angleRange?.[1] ?? DEFAULT_MAX_ANGLE;
+  const hook = e.chart.hookBlockT;
+  const assumed = [`붐 피벗 높이 ${pivotHeight} m`, `최소 붐 각도 ${MIN_ANGLE}°`];
+  if (!e.chart.angleRange) assumed.push(`최대 붐 각도 ${DEFAULT_MAX_ANGLE}°`);
+  if (hook == null) assumed.push('훅 블록 질량 0.5 t');
   return {
     id: e.id,
     name: `${makerLabel(e.maker)} ${e.model}`,
@@ -83,17 +83,17 @@ export function toCrane(e: CatalogEntry): Crane | null {
     classTon: e.classTon,
     boomMin: chart[0].boomLength,
     boomMax: chart[chart.length - 1].boomLength,
-    pivotHeight: p.pivotHeight,
-    hookBlockWeight: p.hookBlockWeight,
+    pivotHeight,
+    hookBlockWeight: hook ?? 0.5,
     minAngle: MIN_ANGLE,
-    maxAngle: MAX_ANGLE,
+    maxAngle,
     outriggerSpan: firstNumber(e.outrigger) ?? 6,
     selfWeight: firstNumber(e.weight) ?? 0,
     chart,
-    source: `${makerLabel(e.maker)} 공식 하중표 PDF 판독값 (주 붐, 아웃리거 최대, 360°, 원본 육안 대조 전)`,
+    source: `${makerLabel(e.maker)} 공식 하중표 PDF 판독값 (주 붐, ${e.chart.rating ?? '아웃리거 최대'})`,
     chartDoc: e.chartDoc,
     specDoc: e.sourceDoc,
-    assumed: [`붐 피벗 높이 ${p.pivotHeight} m`, `붐 각도 ${MIN_ANGLE}~${MAX_ANGLE}°`],
+    assumed,
     sample: false,
   };
 }

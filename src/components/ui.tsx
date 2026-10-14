@@ -127,7 +127,7 @@ export function NumberField({
             }}
             style={styles.numberInput}
           />
-          <T variant="caption" style={{ width: 18, marginRight: 8 }}>
+          <T variant="caption" style={{ minWidth: 18, marginRight: 8 }}>
             {unit}
           </T>
         </View>

@@ -10,6 +10,16 @@ export type CatalogChart = {
   boomLengths: number[];
   /** 행: 작업반경별 정격하중 (t). null 은 해당 붐에서 쓸 수 없는 반경. */
   rows: { radius: number; t: (number | null)[]; verify: boolean }[];
+  /** 주훅 질량 (t, 용구 포함) */
+  hookBlockT?: number;
+  /** 하중표의 붐 각도 범위 (도) */
+  angleRange?: [number, number];
+  /** 정격 조건 (예: 360° 정격, 아웃리거 최대) */
+  rating?: string;
+  /** 판독 방법 */
+  method?: string;
+  /** 텔레스코핑 모드 처리 */
+  modes?: string;
 };
 
 export type CatalogEntry = {
