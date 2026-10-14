@@ -4,7 +4,7 @@ import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from 'react-native-
 import { CraneEval, DEFAULT_LOAD_STACK, ReviewInput, ROOF_MARGIN } from '@/lib/calc';
 import { color, font, verdictColor } from '@/theme';
 
-// 측면도: 크레인, 붐, 건물, 훅과 자재. 모든 값은 같은 계산 결과(ev)에서 가져온다.
+// Side view: crane, boom, building, hook and load. Every value comes from the same evaluation result (ev).
 export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: CraneEval; height?: number }) {
   const [w, setW] = useState(320);
   const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width);
@@ -20,7 +20,7 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
   const maxY = Math.max(tip, H) * 1.12 + 2;
 
   const pad = { l: 8, r: 8, t: 10, b: 44 };
-  // 첫 배치 전에는 폭이 0 일 수 있어 축척이 음수가 되지 않게 막는다.
+  // Width can be 0 before the first layout, so keep the scale from going negative.
   const s = Math.max(0.01, Math.min((w - pad.l - pad.r) / (maxX - minX), (height - pad.t - pad.b) / maxY));
   const X = (x: number) => pad.l + (x - minX) * s;
   const Y = (y: number) => height - pad.b - y * s;
@@ -34,14 +34,14 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
   return (
     <View onLayout={onLayout} style={{ width: '100%', height }}>
       <Svg width={w} height={height}>
-        {/* 지면 */}
+        {/* Ground */}
         <Line x1={0} y1={Y(0)} x2={w} y2={Y(0)} stroke={color.warm} strokeWidth={1.5} />
-        {/* 건물 */}
+        {/* Building */}
         <Rect x={X(input.setback)} y={Y(H)} width={bldgW * s} height={H * s} fill="#EDE7DA" stroke={color.warm} strokeWidth={1} />
         <SvgText x={X(input.setback) + 6} y={(Y(H) + Y(0)) / 2 + 4} fontSize={11} fontFamily={font.body} fill={color.muted}>
           {`건물 ${H.toFixed(1)}m`}
         </SvgText>
-        {/* 크레인 차체 */}
+        {/* Crane carrier */}
         <Rect x={X(-ev.crane.outriggerSpan / 2)} y={Y(hp * 0.75)} width={ev.crane.outriggerSpan * s} height={hp * 0.55 * s} rx={3} fill={color.charcoal} />
         <Rect x={X(-0.9)} y={Y(hp + 0.2)} width={1.8 * s} height={0.6 * s} rx={2} fill={color.charcoal} />
         {[-1, 1].map((k) => (
@@ -49,15 +49,15 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
         ))}
         {ev.boomAngle > 0 ? (
           <G>
-            {/* 붐 */}
+            {/* Boom */}
             <Line x1={X(0)} y1={Y(hp)} x2={X(R)} y2={Y(tip)} stroke={color.yellow} strokeWidth={7} strokeLinecap="round" />
             <Line x1={X(0)} y1={Y(hp)} x2={X(R)} y2={Y(tip)} stroke={color.charcoal} strokeWidth={1.5} />
             <Circle cx={X(0)} cy={Y(hp)} r={4} fill={color.charcoal} />
-            {/* 와이어, 훅, 자재 */}
+            {/* Wire rope, hook, load */}
             <Line x1={X(R)} y1={Y(tip)} x2={X(R)} y2={Y(hookY)} stroke={color.charcoal} strokeWidth={1.2} />
             <Path d={`M${X(R) - (loadW / 2) * s} ${Y(loadTop)} L${X(R)} ${Y(hookY)} L${X(R) + (loadW / 2) * s} ${Y(loadTop)}`} stroke={color.warm} strokeWidth={1} fill="none" />
             <Rect x={X(R) - (loadW / 2) * s} y={Y(loadTop)} width={loadW * s} height={loadH * s} fill={vc} opacity={0.85} rx={2} />
-            {/* 붐 끝 높이 */}
+            {/* Boom tip height */}
             <Line x1={X(R) + 6} y1={Y(tip)} x2={w - 4} y2={Y(tip)} stroke={color.warm} strokeDasharray="3 3" />
             <SvgText x={w - 6} y={Y(tip) - 4} fontSize={11} textAnchor="end" fontFamily={font.mono} fill={color.charcoal}>
               {`Tip ${tip.toFixed(1)}m`}
@@ -67,7 +67,7 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
             </SvgText>
           </G>
         ) : null}
-        {/* 도달거리: 외벽 ~ 인양 지점, 건물 위 */}
+        {/* Reach: outer wall to lift point, above the building */}
         {reach > 0 ? (
           <G>
             <Line x1={X(input.setback)} y1={Y(H) + 10} x2={X(R)} y2={Y(H) + 10} stroke={color.charcoal} strokeWidth={1} />
@@ -78,9 +78,9 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
             </SvgText>
           </G>
         ) : null}
-        {/* 이격거리 */}
+        {/* Setback */}
         <Dim x1={X(0)} x2={X(input.setback)} y={height - 28} label={`이격 ${input.setback.toFixed(1)}m`} />
-        {/* 작업반경 */}
+        {/* Working radius */}
         <Dim x1={X(0)} x2={X(R)} y={height - 8} label={`작업반경 R ${R.toFixed(1)}m`} tone={color.yellowDeep} />
       </Svg>
     </View>

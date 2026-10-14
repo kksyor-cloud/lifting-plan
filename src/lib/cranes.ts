@@ -1,16 +1,16 @@
-// 검토 계산에 쓰는 장비: 카탈로그 중 하중표가 등록된 기종.
+// Cranes used in review calculations: catalog models that have a registered load chart.
 //
-// 하중표는 제조사 공식 PDF 텍스트를 두 번 읽어 일치한 값이며, 열 배치는 재구성이라 원본 육안 대조 전이다. verify 행은
-// 칸 정렬이 확실하지 않아, 그 칸을 쓴 결과에는 "원본 대조 필요"를 붙인다.
-// 붐 피벗 높이와 최소 붐 각도는 제원표에 없어 가정값을 쓴다 (assumed 에 기록).
+// Load charts are values that matched across two reads of the manufacturer's official PDF text; the column layout is reconstructed and not yet visually checked against the original. verify rows
+// have uncertain cell alignment, so results that use those cells are flagged "원본 대조 필요".
+// Boom pivot height and minimum boom angle are not in the spec sheets, so assumed values are used (recorded in assumed).
 import { CATALOG, CatalogChart, CatalogEntry, firstNumber, makerLabel } from './catalog';
 
 export type LoadChartRow = {
-  /** 붐 길이 (m) */
+  /** Boom length (m) */
   boomLength: number;
-  /** [작업반경(m), 정격하중(t)] 쌍. 반경 오름차순. */
+  /** [working radius (m), rated capacity (t)] pairs, ascending by radius. */
   capacities: [number, number][];
-  /** 원본 대조가 필요한 반경 (m) */
+  /** Radii that need checking against the original (m) */
   unverified?: number[];
 };
 
@@ -19,41 +19,41 @@ export type Crane = {
   name: string;
   maker: string;
   model: string;
-  /** 크레인 등급 (최대 정격하중, t) */
+  /** Crane class (max rated capacity, t) */
   classTon: number;
-  /** 붐 길이 범위 (m) */
+  /** Boom length range (m) */
   boomMin: number;
   boomMax: number;
-  /** 선회 중심에서 붐 피벗까지 높이 (m) */
+  /** Height from slew center to boom pivot (m) */
   pivotHeight: number;
-  /** 훅 블록 자중 (t). 하중률 계산 시 인양 하중에 더한다. */
+  /** Hook block self-weight (t). Added to the lifted load when computing load ratio. */
   hookBlockWeight: number;
-  /** 붐 각도 허용 범위 (도) */
+  /** Allowed boom angle range (degrees) */
   minAngle: number;
   maxAngle: number;
-  /** 아웃리거 최대 확장 폭 (m) */
+  /** Outrigger span at full extension (m) */
   outriggerSpan: number;
-  /** 자체 중량 (t) */
+  /** Self-weight (t) */
   selfWeight: number;
   chart: LoadChartRow[];
-  /** 하중표 출처 설명 */
+  /** Load chart source description */
   source: string;
-  /** 하중표 원본 PDF */
+  /** Original load chart PDF */
   chartDoc?: string;
-  /** 공식 제원표 PDF */
+  /** Official spec sheet PDF */
   specDoc?: string;
-  /** 장비 전장 × 전폭 × 전고 (카탈로그 글 그대로) */
+  /** Overall length × width × height (catalog text as-is) */
   size?: string;
-  /** 최대 정격하중 (카탈로그 글, 예: 25t @ 3.5m) */
+  /** Max rated capacity (catalog text, e.g. 25t @ 3.5m) */
   maxCap?: string;
-  /** 하중표 정격 조건 (예: 360° 정격, 아웃리거 최대) */
+  /** Load chart rating conditions (e.g. 360° rating, outriggers fully extended) */
   rating?: string;
-  /** 가정값을 쓴 항목 설명 */
+  /** Descriptions of items that use assumed values */
   assumed: string[];
   sample: boolean;
 };
 
-/** 카탈로그 표(반경 행 × 붐 열)를 붐 길이별 행으로 바꾼다. 빈 칸은 뺀다. */
+/** Converts a catalog table (radius rows × boom columns) into rows per boom length. Empty cells are dropped. */
 export function chartToRows(chart: CatalogChart): LoadChartRow[] {
   return chart.boomLengths.map((boomLength, j) => {
     const cells = chart.rows.filter((r) => r.t[j] != null).sort((a, b) => a.radius - b.radius);
@@ -66,10 +66,10 @@ export function chartToRows(chart: CatalogChart): LoadChartRow[] {
   });
 }
 
-/** 실제 운용 최소 붐 각도 (하중표 범위와 별개로 두는 가정값) */
+/** Practical minimum boom angle (an assumption kept separate from the load chart range) */
 const MIN_ANGLE = 15;
 const DEFAULT_MAX_ANGLE = 80;
-/** 붐 피벗 높이 가정: 제원표에 없어서 장비 등급으로 어림한다 */
+/** Assumed boom pivot height: not in spec sheets, so estimated from crane class */
 export const pivotEstimate = (classTon: number) => Math.round((1.8 + 0.008 * classTon) * 10) / 10;
 
 export function toCrane(e: CatalogEntry): Crane | null {

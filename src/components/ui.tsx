@@ -82,7 +82,7 @@ export function Chip({ label, active, onPress }: { label: string; active: boolea
 
 const round = (v: number, step: number) => Math.round(v / step) * step;
 
-/** 장갑 낀 손으로도 쓰기 쉬운 숫자 입력: 큰 단위/작은 단위 ± 버튼 + 직접 입력 */
+/** Number input that is easy to use with gloves on: coarse/fine ± buttons plus direct entry */
 export function NumberField({
   label,
   unit,
@@ -193,13 +193,13 @@ export function Badge({ label, kind }: { label: string; kind: 'yellow' | 'outlin
   );
 }
 
-/** 화면 아래 고정 버튼 영역 */
+/** Button area pinned to the bottom of the screen */
 export function Footer({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   return <View style={[styles.footer, { paddingBottom: space.lg + insets.bottom }]}>{children}</View>;
 }
 
-/** 끌어서 값을 바꾸는 슬라이더. 웹·네이티브 공통으로 터치 응답자만 쓴다. */
+/** Drag-to-change slider. Uses only touch responders, shared by web and native. */
 export function Slider({ value, min, max, step, onChange, disabled }: { value: number; min: number; max: number; step: number; onChange: (v: number) => void; disabled?: boolean }) {
   const [width, setWidth] = useState(1);
   const origin = useRef(0);
@@ -218,7 +218,7 @@ export function Slider({ value, min, max, step, onChange, disabled }: { value: n
       onMoveShouldSetResponder={() => !disabled}
       onResponderTerminationRequest={() => false}
       onResponderGrant={(e: GestureResponderEvent) => {
-        // 손가락이 슬라이더 밖으로 나가도 따라가도록 화면 좌표 기준 원점을 잡는다.
+        // Anchor the origin in screen coordinates so tracking continues when the finger leaves the slider.
         origin.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
         emit(e.nativeEvent.locationX);
       }}
@@ -233,7 +233,7 @@ export function Slider({ value, min, max, step, onChange, disabled }: { value: n
   );
 }
 
-/** Crane Fit 식 입력 줄: 제목·값(·자물쇠) / 큰−·작은− · 슬라이더 · 작은+·큰+ */
+/** Crane Fit-style input row: title·value(·lock) / coarse−·fine− · slider · fine+·coarse+ */
 export function SliderField({
   label,
   value,

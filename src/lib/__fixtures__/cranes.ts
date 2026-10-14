@@ -1,4 +1,4 @@
-// 계산 로직 테스트용 고정 장비. 실제 하중표가 아니다.
+// Fixed cranes for calculation-logic tests. Not real load charts.
 import { Crane } from '../cranes';
 
 export const SAMPLE_CRANES: Crane[] = [

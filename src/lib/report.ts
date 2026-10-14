@@ -1,4 +1,4 @@
-// 검토서 HTML. 인쇄(PDF)용이라 화면 컴포넌트와 별도로 같은 계산 결과에서 만든다.
+// Review report HTML. Built for print (PDF), so it is generated from the same calculation result separately from the screen components.
 import { CraneEval, DEFAULT_LOAD_STACK, FAIL_LABEL, HOOK_ALLOWANCE, MIN_WALL_CLEARANCE, ReviewInput, ReviewResult, ROOF_MARGIN, VERDICT_LABEL, WARN_RATIO } from './calc';
 import { GROUND_WARN_RATIO, REACTION_SHARE } from './ground';
 
@@ -12,7 +12,7 @@ function row(k: string, v: string, strong = false) {
   return `<tr><th>${esc(k)}</th><td${strong ? ' class="b"' : ''}>${esc(v)}</td></tr>`;
 }
 
-/** 측면도 SVG (화면 Diagram 과 같은 좌표 계산) */
+/** Side-view SVG (same coordinate math as the on-screen Diagram) */
 export function diagramSvg(input: ReviewInput, ev: CraneEval, w = 640, h = 300): string {
   const R = input.radius;
   const reach = R - input.setback;

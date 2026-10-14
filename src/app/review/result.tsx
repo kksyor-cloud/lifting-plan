@@ -204,7 +204,7 @@ function Line({ k, v }: { k: string; v: string }) {
   );
 }
 
-/** "11.53 × 2.62 × 3.475 m" → 전장·전폭·전고 */
+/** "11.53 × 2.62 × 3.475 m" → overall length·width·height */
 function sizeParts(size?: string): [string, string][] {
   const n = size?.match(/\d+(?:\.\d+)?/g);
   if (!n || n.length < 3) return [];

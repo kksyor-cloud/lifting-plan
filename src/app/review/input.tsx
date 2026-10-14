@@ -6,7 +6,7 @@ import { LoadDims } from '@/lib/calc';
 import { useReview } from '@/lib/review-context';
 import { color, font, radius, space } from '@/theme';
 
-// 고정 조건: 구간 칩으로 크게 고르고 슬라이더·± 버튼으로 맞춘다.
+// Fixed conditions: pick a rough range with chips, then fine-tune with the slider and ± buttons.
 type Band = { key: string; sub: string; min: number; max: number; value: number };
 const HEIGHT_BANDS: Band[] = [
   { key: '저', sub: '0-20', min: 0, max: 20, value: 15 },
@@ -30,7 +30,7 @@ const DIM_FIELDS: { key: DimKey; label: string }[] = [
 
 export default function InputScreen() {
   const { input, setInput } = useReview();
-  // 규격은 세 칸을 모두 채워야 계산에 쓴다. 입력 중인 글은 따로 들고 있는다.
+  // Dimensions are used in the calculation only when all three fields are filled. In-progress text is held separately.
   const [dimText, setDimText] = useState<Record<DimKey, string>>(() => ({
     length: input.dims ? String(input.dims.length) : '',
     width: input.dims ? String(input.dims.width) : '',

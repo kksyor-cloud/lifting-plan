@@ -42,7 +42,7 @@ describe('evaluateCrane', () => {
     expect(e.tipHeight).toBeGreaterThanOrEqual(requiredTipHeight(i));
     expect(e.wallClearance).toBeGreaterThanOrEqual(1);
     expect(e.topClearance).toBeCloseTo(e.tipHeight - i.buildingHeight, 6);
-    // 0.1m 짧으면 조건을 만족하지 못해야 한다
+    // 0.1 m shorter must fail the conditions
     const shorter = Math.round((e.boomLength - 0.1) * 10) / 10;
     const tipShorter = c25.pivotHeight + Math.sqrt(shorter ** 2 - R ** 2);
     const angleShorter = (Math.acos(R / shorter) * 180) / Math.PI;
@@ -108,7 +108,7 @@ describe('evaluateCrane with gaps in the chart', () => {
   });
 });
 
-describe('autoDistance (최대거리 자동계산)', () => {
+describe('autoDistance (max-distance auto-calc)', () => {
   it('finds the farthest reach that is still ok, and nothing farther is ok', () => {
     const i = input();
     const plan = autoDistance(c25, i, { setback: false, radius: false })!;
@@ -117,7 +117,7 @@ describe('autoDistance (최대거리 자동계산)', () => {
     expect(plan.setback).toBeGreaterThanOrEqual(minSetback(c25));
     expect(evaluateCrane(c25, { ...i, ...plan }).verdict).toBe('ok');
     const reach = plan.radius - plan.setback;
-    // 같은 이격거리에서 반경을 0.5m 늘리면 더 이상 '가능'이 아니어야 한다
+    // At the same setback, adding 0.5 m of radius must no longer be '가능' (feasible)
     expect(evaluateCrane(c25, { ...i, setback: plan.setback, radius: plan.radius + 0.5 }).verdict).not.toBe('ok');
     expect(reach).toBeGreaterThan(0);
   });

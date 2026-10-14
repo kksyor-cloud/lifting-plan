@@ -1,24 +1,24 @@
-// 장비 카탈로그: 5개 제조사 200t 이하 기종의 기본 제원.
-// 원본은 /mnt/project-files/catalog/cranes.json, scripts/sync-catalog.py 로 src/data 에 복사한다.
-// 제원은 기종 비교·후보 선정용이다. 하중 계산에는 하중표(chart)가 있는 기종만 쓴다 (cranes.ts).
+// Crane catalog: basic specs for models up to 200 t from 5 manufacturers.
+// Source is /mnt/project-files/catalog/cranes.json, copied into src/data by scripts/sync-catalog.py.
+// Specs are for comparing models and shortlisting. Load calculations use only models with a load chart (cranes.ts).
 import raw from '../data/catalog.json';
 
 export type Maker = 'Kato' | 'Liebherr' | 'Tadano' | 'Grove' | 'Kobelco';
 
 export type CatalogChart = {
-  /** 열: 주 붐 길이 (m) */
+  /** Columns: main boom length (m) */
   boomLengths: number[];
-  /** 행: 작업반경별 정격하중 (t). null 은 해당 붐에서 쓸 수 없는 반경. */
+  /** Rows: rated capacity per working radius (t). null means the radius is not usable with that boom. */
   rows: { radius: number; t: (number | null)[]; verify: boolean }[];
-  /** 주훅 질량 (t, 용구 포함) */
+  /** Main hook mass (t, including fittings) */
   hookBlockT?: number;
-  /** 하중표의 붐 각도 범위 (도) */
+  /** Boom angle range of the load chart (degrees) */
   angleRange?: [number, number];
-  /** 정격 조건 (예: 360° 정격, 아웃리거 최대) */
+  /** Rating conditions (e.g. 360° rating, outriggers fully extended) */
   rating?: string;
-  /** 판독 방법 */
+  /** How the values were read */
   method?: string;
-  /** 텔레스코핑 모드 처리 */
+  /** How telescoping modes are handled */
   modes?: string;
 };
 
@@ -29,7 +29,7 @@ export type CatalogEntry = {
   type: string;
   classTon: number;
   maxCap?: string;
-  /** 주 붐 길이 [최소, 최대] (m). 단종 기종은 한쪽이 null 일 수 있다. */
+  /** Main boom length [min, max] (m). Discontinued models may have one side null. */
   boom?: [number | null, number | null];
   jib?: string;
   hookHeight?: string;
@@ -40,15 +40,15 @@ export type CatalogEntry = {
   hookBlock?: string;
   axles?: number;
   engine?: string;
-  /** 제조사 현행 라인업 여부 */
+  /** Whether the model is in the manufacturer's current lineup */
   current: boolean;
-  /** 공식 = 제조사 홈페이지·공식 제원표, 2차 = 제원 사이트 또는 모델명만 확인 */
+  /** 공식 = manufacturer website or official spec sheet; 2차 = spec site, or model name only confirmed */
   confidence: '공식' | '2차';
   source?: string;
   sourceUrl?: string;
-  /** 공식 제원표 / 카탈로그 PDF */
+  /** Official spec sheet / catalog PDF */
   sourceDoc?: string;
-  /** 하중표를 뽑은 원본 PDF */
+  /** Source PDF the load chart was extracted from */
   chartDoc?: string;
   note?: string;
   chart?: CatalogChart;
@@ -67,7 +67,7 @@ export const MAKERS: { key: Maker; label: string }[] = [
 
 export const makerLabel = (m: string) => MAKERS.find((x) => x.key === m)?.label ?? m.toUpperCase();
 
-/** 형식 필터. 'etc' 는 시티크레인 등 나머지. */
+/** Type filter. 'etc' covers city cranes and everything else. */
 export const TYPES = [
   { key: 'all', label: '전체' },
   { key: '올터레인', label: '올터레인' },
@@ -115,7 +115,7 @@ export function filterCatalog(list: CatalogEntry[], f: CatalogFilter): CatalogEn
   return list.filter((e) => matches(e, f));
 }
 
-/** 필터 칩 옆 숫자: 해당 칸만 바꿨을 때 남는 기종 수 */
+/** Count next to a filter chip: models remaining if only that filter changes */
 export function countWith<K extends keyof CatalogFilter>(list: CatalogEntry[], f: CatalogFilter, key: K, value: CatalogFilter[K]): number {
   return filterCatalog(list, { ...f, [key]: value }).length;
 }
@@ -124,7 +124,7 @@ export function findEntry(id: string): CatalogEntry | undefined {
   return CATALOG.find((e) => e.id === id);
 }
 
-/** 붐 길이 범위 글. 한쪽 값만 있는 기종도 있다. */
+/** Boom length range text. Some models have only one bound. */
 export function boomText(b: CatalogEntry['boom']): string | undefined {
   if (!b || (b[0] == null && b[1] == null)) return undefined;
   return `${b[0] ?? ''}~${b[1] ?? ''}m`;
@@ -132,7 +132,7 @@ export function boomText(b: CatalogEntry['boom']): string | undefined {
 
 export const tonLabel = (t: number) => `${Number.isInteger(t) ? t : t.toFixed(1)}t`;
 
-/** "최대 6.6 m", "19.795 t" 같은 글에서 첫 숫자를 꺼낸다. */
+/** Extracts the first number from text like "최대 6.6 m" or "19.795 t". */
 export function firstNumber(s: string | undefined): number | null {
   const m = s?.match(/\d+(?:\.\d+)?/);
   return m ? Number(m[0]) : null;

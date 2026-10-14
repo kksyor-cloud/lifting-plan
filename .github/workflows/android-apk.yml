@@ -1,5 +1,5 @@
-# 안드로이드 설치 파일(APK)을 만들어 GitHub Release "apk-latest" 에 올린다.
-# 휴대폰에서 Releases 페이지를 열어 APK를 받아 설치하면 된다 (출처를 알 수 없는 앱 설치 허용 필요).
+# Builds the Android APK and publishes it to the GitHub release "apk-latest".
+# Open the Releases page on a phone, download the APK and install it (installing from unknown sources must be allowed).
 name: Android APK
 
 on:
@@ -43,7 +43,7 @@ jobs:
         env:
           CI: 1
 
-      # 릴리스 빌드는 Expo 템플릿 기본값인 디버그 키로 서명된다. 스토어 배포용이 아니라 직접 설치용이다.
+      # The release build is signed with the debug key (Expo template default). It is for direct install, not for the Play Store.
       - name: Build release APK
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
@@ -63,10 +63,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-latest
-          name: 리프팅 플랜 APK (최신)
+          name: Lifting Plan APK (latest)
           prerelease: true
           make_latest: false
           body: |
-            ${{ github.ref_name }} 브랜치 ${{ github.sha }} 커밋으로 만든 설치 파일입니다.
-            휴대폰에서 아래 APK를 받아 설치하세요. 설치하려면 "출처를 알 수 없는 앱" 설치를 허용해야 합니다.
+            Built from branch ${{ github.ref_name }} at commit ${{ github.sha }}.
+            Download the APK below on an Android phone and install it. Installing apps from unknown sources must be allowed.
           files: out/*.apk

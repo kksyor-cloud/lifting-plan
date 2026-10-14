@@ -19,7 +19,7 @@ export default function SettingsScreen() {
   const [more, setMore] = useState(false);
   const [compare, setCompare] = useState(false);
 
-  // 이 화면에 들어온 순간의 추천 장비로 고정한다. 이후 장비는 UP/DN 이나 비교 목록으로만 바뀐다.
+  // Pin to the crane recommended when this screen was entered. After that the crane changes only via UP/DN or the comparison list.
   useEffect(() => {
     if (craneId) setCraneId(craneId);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,8 +1,8 @@
-"""장비 카탈로그(cranes.json)를 앱 데이터로 복사한다.
+"""Copy the crane catalog (cranes.json) into app data.
 
-사용: python3 scripts/sync-catalog.py [cranes.json 경로]
-기본 경로는 프로젝트 공유 폴더의 /mnt/project-files/catalog/cranes.json.
-앱에서 쓰지 않는 필드는 빼고, 정렬해서 src/data/catalog.json 에 쓴다.
+Usage: python3 scripts/sync-catalog.py [path to cranes.json]
+Default path is /mnt/project-files/catalog/cranes.json in the project shared folder.
+Drops fields the app does not use, sorts, and writes src/data/catalog.json.
 """
 import json, sys, pathlib
 
@@ -18,7 +18,7 @@ for c in d['cranes']:
     e = {k: c.get(k) for k in KEEP}
     e['current'] = c.get('current', True) is not False
     if e['sourceDoc'] and not str(e['sourceDoc']).startswith('http'):
-        e['sourceDoc'] = None  # 문서 번호만 있는 값은 링크로 못 쓴다
+        e['sourceDoc'] = None  # a bare document number cannot be used as a link
     cranes.append({k: v for k, v in e.items() if v is not None})
 cranes.sort(key=lambda c: (c['classTon'], c['maker'], c['model']))
 ids = [c['id'] for c in cranes]

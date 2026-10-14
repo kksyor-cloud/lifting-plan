@@ -7,7 +7,7 @@ import { SavedReview } from '@/lib/history';
 import { useReview } from '@/lib/review-context';
 import { color, font, radius, space } from '@/theme';
 
-// 계산 기록 한 줄: 번호 · 현장명 태그 · 장비 · 조건 요약
+// One calculation-history row: number · site-name tag · crane · condition summary
 export function RecentRow({ item, index, onLongPress }: { item: SavedReview; index?: number; onLongPress?: () => void }) {
   const { reset } = useReview();
   const ev = review(item.input).evals.find((e) => e.crane.id === item.craneId);

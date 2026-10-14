@@ -2,7 +2,7 @@ import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
 import { autoDistance, DEFAULT_INPUT, Locks, review, ReviewInput, ReviewResult, stepCrane } from './calc';
 import { findCrane } from './cranes';
 
-// 검토 한 건의 단일 상태. 모든 화면은 같은 input 에서 계산한 result 를 읽는다.
+// Single state for one review. Every screen reads the result computed from the same input.
 type Ctx = {
   input: ReviewInput;
   setInput: (patch: Partial<ReviewInput>) => void;
@@ -10,12 +10,12 @@ type Ctx = {
   result: ReviewResult;
   craneId: string | null;
   setCraneId: (id: string) => void;
-  /** 자물쇠: 고정한 값은 자동계산에서 바꾸지 않는다 */
+  /** Locks: locked values are not changed by auto-calc */
   locks: Locks;
   toggleLock: (k: keyof Locks) => void;
-  /** UP(+1) / DN(-1): 한 단계 큰·작은 장비로 바꾼다. 끝이면 false */
+  /** UP(+1) / DN(-1): switch to the next larger/smaller crane. false at either end */
   step: (dir: 1 | -1) => boolean;
-  /** 최대거리 자동계산. 찾으면 이격거리·작업반경을 바꾸고 true */
+  /** Max-distance auto-calc. If found, updates setback and working radius and returns true */
   auto: () => boolean;
 };
 
@@ -28,7 +28,7 @@ export function ReviewProvider({ children }: { children: ReactNode }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [locks, setLocks] = useState<Locks>(NO_LOCKS);
   const result = useMemo(() => review(input), [input]);
-  // 사용자가 고르지 않았으면 추천 장비(조건을 만족하는 가장 작은 장비)를 쓴다.
+  // If the user has not picked one, use the recommended crane (the smallest that meets the conditions).
   const craneId = chosen ?? result.recommendedId ?? result.evals[result.evals.length - 1]?.crane.id ?? null;
 
   const value: Ctx = {

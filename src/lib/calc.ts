@@ -5,23 +5,23 @@ export type LoadDims = { length: number; width: number; height: number };
 
 export type ReviewInput = {
   siteName: string;
-  /** 건물 높이 (m) */
+  /** Building height (m) */
   buildingHeight: number;
-  /** 자재 중량 (t) */
+  /** Load weight (t) */
   loadWeight: number;
-  /** 줄걸이 용구(슬링, 샤클 등) 중량 (t) */
+  /** Rigging gear weight (slings, shackles, etc.) (t) */
   riggingWeight: number;
-  /** 크레인 선회 중심 ~ 건물 외벽 수평거리 (m) */
+  /** Horizontal distance from crane slew center to building outer wall (m) */
   setback: number;
-  /** 작업반경: 크레인 선회 중심 ~ 인양 지점 수평거리 (m). 도달거리 = 작업반경 - 이격거리 */
+  /** Working radius: horizontal distance from crane slew center to lift point (m). reach = working radius - setback */
   radius: number;
-  /** 자재 규격. 없으면 기본 높이 여유를 쓴다. */
+  /** Load dimensions. If absent, the default height allowance is used. */
   dims: LoadDims | null;
-  /** 줄걸이 각도, 수평 기준 (도) */
+  /** Sling angle from horizontal (degrees) */
   slingAngle: number;
-  /** 지반 허용 지지력 (kN/m²) */
+  /** Allowable ground bearing capacity (kN/m²) */
   groundBearing: number;
-  /** 아웃리거 받침판 한 변 (m, 정사각형) */
+  /** Outrigger pad side length (m, square) */
   padSize: number;
 };
 
@@ -34,56 +34,56 @@ export type CraneEval = {
   reason: FailReason | null;
   verdict: Verdict;
   boomLength: number;
-  /** 붐 각도, 수평 기준 (도) */
+  /** Boom angle from horizontal (degrees) */
   boomAngle: number;
-  /** 붐 끝 높이 (m) */
+  /** Boom tip height (m) */
   tipHeight: number;
-  /** 붐 끝 높이 - 건물 높이 (m) */
+  /** Boom tip height - building height (m) */
   topClearance: number;
-  /** 건물 모서리와 붐 사이 수직 거리 (m) */
+  /** Perpendicular distance between the building edge and the boom (m) */
   wallClearance: number;
-  /** 적용한 하중표 행 */
+  /** Load chart row applied */
   chartBoomLength: number;
   chartRadius: number;
-  /** 적용한 하중표 칸이 원본 대조를 마친 값인지 */
+  /** Whether the applied load chart cell has been checked against the original */
   chartVerified: boolean;
-  /** 정격하중 (t) */
+  /** Rated capacity (t) */
   capacity: number;
-  /** 자재 + 줄걸이 + 훅 블록 (t) */
+  /** Load + rigging + hook block (t) */
   totalLoad: number;
   /** totalLoad / capacity */
   ratio: number;
-  /** 아웃리거 반력·접지압 간이 검토. 장비 중량을 모르면 null */
+  /** Simplified outrigger reaction / ground pressure check. null if crane weight is unknown */
   ground: GroundCheck | null;
 };
 
 export type Sling = {
   legLength: number;
   height: number;
-  /** 1가닥 장력 (t) */
+  /** Tension per sling leg (t) */
   tension: number;
 };
 
 export type ReviewResult = {
   radius: number;
-  /** 도달거리: 건물 외벽 ~ 인양 지점 (m) */
+  /** Reach: building outer wall to lift point (m) */
   reach: number;
   requiredTipHeight: number;
   sling: Sling | null;
   evals: CraneEval[];
-  /** 판정이 '가능'인 가장 작은 장비. 없으면 '주의' 중 가장 작은 장비. */
+  /** Smallest crane with verdict '가능' (OK); if none, the smallest with '주의' (caution). */
   recommendedId: string | null;
 };
 
-/** 건물 상단 위 최소 여유 (m) */
+/** Minimum clearance above the building top (m) */
 export const ROOF_MARGIN = 1.0;
-/** 훅 블록 높이 + 최소 권상 여유 (m) */
+/** Hook block height + minimum hoisting allowance (m) */
 export const HOOK_ALLOWANCE = 2.0;
-/** 건물 모서리와 붐 사이 최소 거리 (m) */
+/** Minimum distance between the building edge and the boom (m) */
 export const MIN_WALL_CLEARANCE = 1.0;
-/** 규격 미입력 시 자재 높이 + 줄걸이 높이 가정값 (m) */
+/** Assumed load height + rigging height when dimensions are not entered (m) */
 export const DEFAULT_LOAD_STACK = 2.5;
-/** 하중률 주의 기준 */
+/** Load ratio caution threshold */
 export const WARN_RATIO = 0.8;
 
 const deg = (rad: number) => (rad * 180) / Math.PI;
@@ -93,7 +93,7 @@ export function slingFor(dims: LoadDims | null, angleDeg: number, hookLoad: numb
   if (!dims) return null;
   const half = Math.max(dims.length, dims.width) / 2;
   const a = rad(angleDeg);
-  // 2가닥 기준. 4가닥이어도 하중이 고르게 걸린다고 보지 않고 2가닥으로 계산한다.
+  // Based on 2 legs. Even with 4 legs, the load is not assumed to share evenly, so 2 legs are used.
   return {
     legLength: half / Math.cos(a),
     height: half * Math.tan(a),
@@ -107,7 +107,7 @@ export function requiredTipHeight(input: ReviewInput): number {
   return input.buildingHeight + ROOF_MARGIN + stack + HOOK_ALLOWANCE;
 }
 
-/** 하중표에서 보수적으로 정격하중을 찾는다: 같거나 긴 붐 행, 같거나 먼 반경 칸. */
+/** Looks up rated capacity conservatively: the same-or-longer boom row and same-or-farther radius cell. */
 export function lookupCapacity(
   chart: LoadChartRow[],
   boomLength: number,
@@ -153,8 +153,8 @@ export function evaluateCrane(crane: Crane, input: ReviewInput): CraneEval {
     ratio: Infinity,
   };
 
-  // 조건을 만족하는 가장 짧은 붐 길이를 0.1m 단위로 찾는다.
-  // 그 붐에 해당하는 하중표 칸이 없으면 더 긴 붐 중 하중표가 있는 길이를 쓴다.
+  // Find the shortest boom length that meets the conditions, in 0.1 m steps.
+  // If the load chart has no cell for that boom, use the next longer boom length that has one.
   let found: { L: number; g: Geometry } | null = null;
   let cap: ReturnType<typeof lookupCapacity> = null;
   for (let L = crane.boomMin; L <= crane.boomMax + 1e-9; L = Math.round((L + 0.1) * 10) / 10) {
@@ -231,7 +231,7 @@ export const DEFAULT_INPUT: ReviewInput = {
   padSize: 1.2,
 };
 
-/** 예전에 저장한 입력에 새 항목이 없으면 기본값을 채운다. 예전 입력은 작업반경 대신 도달거리를 저장했다. */
+/** Fills defaults for fields missing from previously saved input. Older input stored reach instead of working radius. */
 export function normalizeInput(i: Partial<ReviewInput> & { reach?: number }): ReviewInput {
   const { reach, ...rest } = i;
   const radius = rest.radius ?? (reach != null ? (rest.setback ?? DEFAULT_INPUT.setback) + reach : undefined);
@@ -240,25 +240,25 @@ export function normalizeInput(i: Partial<ReviewInput> & { reach?: number }): Re
 
 export const reachOf = (input: ReviewInput) => input.radius - input.setback;
 
-/** 거리 조정 단위 (m) */
+/** Distance adjustment step (m) */
 export const DIST_STEP = 0.5;
-/** 이격거리 상한 (m) */
+/** Setback upper limit (m) */
 export const MAX_SETBACK = 40;
 
 const snap = (v: number) => Math.round(v / DIST_STEP) * DIST_STEP;
 
-/** 아웃리거를 편 장비가 외벽에 붙을 수 있는 최소 이격거리: 아웃리거 폭의 절반 + 1m */
+/** Minimum setback for a crane with outriggers extended to sit against the wall: half the outrigger span + 1 m */
 export const minSetback = (crane: Crane) => Math.max(3, Math.ceil((crane.outriggerSpan / 2 + 1) / DIST_STEP) * DIST_STEP);
 
-/** 하중표의 가장 먼 반경 (m) */
+/** Farthest radius in the load chart (m) */
 export const maxChartRadius = (crane: Crane) => Math.max(...crane.chart.flatMap((r) => r.capacities.map(([x]) => x)));
 
 export type Locks = { setback: boolean; radius: boolean };
 
 /**
- * 최대거리 자동계산: 이 장비로 건물 안쪽 가장 먼 곳(도달거리 최대)까지 인양할 수 있는 이격거리·작업반경.
- * 고정(자물쇠)한 값은 그대로 두고 나머지만 찾는다. 판정 '가능'을 먼저 찾고, 없으면 '주의'까지 허용한다.
- * 같은 도달거리면 이격거리가 짧은 쪽을 고른다. 찾지 못하면 null.
+ * Max-distance auto-calc: the setback and working radius that let this crane lift farthest into the building (max reach).
+ * Locked values are kept; only the rest are searched. Looks for verdict '가능' (OK) first, then allows '주의' (caution).
+ * For equal reach, the shorter setback wins. null if nothing is found.
  */
 export function autoDistance(crane: Crane, input: ReviewInput, locks: Locks): { setback: number; radius: number; verdict: Verdict } | null {
   const maxR = maxChartRadius(crane);
@@ -273,7 +273,7 @@ export function autoDistance(crane: Crane, input: ReviewInput, locks: Locks): { 
       if (locks.radius) {
         if (input.radius >= setback) radii.push(input.radius);
       } else {
-        // 도달거리가 이미 찾은 값보다 길어질 수 없으면 더 볼 필요가 없다.
+        // Stop once reach can no longer exceed the best found so far.
         if (best && maxR - setback <= best.radius - best.setback) break;
         for (let r = snap(Math.floor(maxR / DIST_STEP) * DIST_STEP); r >= setback - 1e-9; r = snap(r - DIST_STEP)) radii.push(r);
       }
@@ -291,7 +291,7 @@ export function autoDistance(crane: Crane, input: ReviewInput, locks: Locks): { 
   return null;
 }
 
-/** UP/DN: 등급 순으로 한 단계 큰(+1) 또는 작은(-1) 장비. 끝이면 null. */
+/** UP/DN: the next larger (+1) or smaller (-1) crane by class. null at either end. */
 export function stepCrane(id: string | null, dir: 1 | -1, cranes: Crane[] = CRANES): Crane | null {
   const list = sortCranes(cranes);
   const i = list.findIndex((c) => c.id === id);
