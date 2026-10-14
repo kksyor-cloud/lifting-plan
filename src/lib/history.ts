@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ReviewInput } from './calc';
+import { normalizeInput, ReviewInput } from './calc';
 
 // 결과는 저장하지 않고 입력과 선택 장비만 저장한다.
 // 다시 열 때 같은 계산 로직으로 결과를 만들어 화면마다 값이 어긋나지 않게 한다.
@@ -15,7 +15,8 @@ const KEY = 'liftnote.reviews.v1';
 export async function loadReviews(): Promise<SavedReview[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as SavedReview[]) : [];
+    const list = raw ? (JSON.parse(raw) as SavedReview[]) : [];
+    return list.map((r) => ({ ...r, input: normalizeInput(r.input) }));
   } catch {
     return [];
   }

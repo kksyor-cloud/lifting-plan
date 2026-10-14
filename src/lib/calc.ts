@@ -1,4 +1,5 @@
 import { CRANES, Crane, LoadChartRow } from './cranes';
+import { GroundCheck, groundCheck } from './ground';
 
 export type LoadDims = { length: number; width: number; height: number };
 
@@ -18,6 +19,10 @@ export type ReviewInput = {
   dims: LoadDims | null;
   /** 줄걸이 각도, 수평 기준 (도) */
   slingAngle: number;
+  /** 지반 허용 지지력 (kN/m²) */
+  groundBearing: number;
+  /** 아웃리거 받침판 한 변 (m, 정사각형) */
+  padSize: number;
 };
 
 export type Verdict = 'ok' | 'warn' | 'no';
@@ -48,6 +53,8 @@ export type CraneEval = {
   totalLoad: number;
   /** totalLoad / capacity */
   ratio: number;
+  /** 아웃리거 반력·접지압 간이 검토. 장비 중량을 모르면 null */
+  ground: GroundCheck | null;
 };
 
 export type Sling = {
@@ -131,6 +138,7 @@ export function evaluateCrane(crane: Crane, input: ReviewInput): CraneEval {
   const base = {
     crane,
     totalLoad,
+    ground: groundCheck(crane.selfWeight, totalLoad, input.groundBearing, input.padSize),
     boomLength: crane.boomMax,
     boomAngle: 0,
     tipHeight: 0,
@@ -216,4 +224,11 @@ export const DEFAULT_INPUT: ReviewInput = {
   reach: 6,
   dims: null,
   slingAngle: 60,
+  groundBearing: 150,
+  padSize: 1.2,
 };
+
+/** 예전에 저장한 입력에 새 항목이 없으면 기본값을 채운다. */
+export function normalizeInput(i: Partial<ReviewInput>): ReviewInput {
+  return { ...DEFAULT_INPUT, ...i };
+}
