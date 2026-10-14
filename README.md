@@ -11,7 +11,7 @@
 python3 scripts/sync-catalog.py   # /mnt/project-files/catalog/cranes.json -> src/data/catalog.json
 ```
 
-하중표가 있는 기종을 검토 계산에 넣으려면 `src/lib/cranes.ts` 의 `PARAMS` 에 붐 피벗 높이와 훅 블록 질량을 추가합니다.
+하중표가 있는 기종을 검토 계산에 넣으려면 카탈로그의 `chart` 에 하중표를 넣으면 자동으로 검토 계산 장비가 됩니다(`src/lib/cranes.ts` 의 `toCrane`). 붐 피벗 높이는 등급으로 어림한 가정값입니다.
 
 ## 실행
 
