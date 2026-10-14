@@ -9,17 +9,19 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
   const [w, setW] = useState(320);
   const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width);
 
-  const R = input.setback + input.reach;
+  const R = input.radius;
+  const reach = R - input.setback;
   const H = input.buildingHeight;
   const hp = ev.crane.pivotHeight;
   const tip = Math.max(ev.tipHeight, hp);
-  const bldgW = Math.max(input.reach + 4, 8);
+  const bldgW = Math.max(reach + 4, 8);
   const minX = -ev.crane.outriggerSpan / 2 - 1.5;
   const maxX = input.setback + bldgW + 1;
   const maxY = Math.max(tip, H) * 1.12 + 2;
 
-  const pad = { l: 8, r: 8, t: 10, b: 26 };
-  const s = Math.min((w - pad.l - pad.r) / (maxX - minX), (height - pad.t - pad.b) / maxY);
+  const pad = { l: 8, r: 8, t: 10, b: 44 };
+  // 첫 배치 전에는 폭이 0 일 수 있어 축척이 음수가 되지 않게 막는다.
+  const s = Math.max(0.01, Math.min((w - pad.l - pad.r) / (maxX - minX), (height - pad.t - pad.b) / maxY));
   const X = (x: number) => pad.l + (x - minX) * s;
   const Y = (y: number) => height - pad.b - y * s;
 
@@ -36,7 +38,7 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
         <Line x1={0} y1={Y(0)} x2={w} y2={Y(0)} stroke={color.warm} strokeWidth={1.5} />
         {/* 건물 */}
         <Rect x={X(input.setback)} y={Y(H)} width={bldgW * s} height={H * s} fill="#EDE7DA" stroke={color.warm} strokeWidth={1} />
-        <SvgText x={X(input.setback) + 6} y={Y(H) + 16} fontSize={11} fontFamily={font.body} fill={color.muted}>
+        <SvgText x={X(input.setback) + 6} y={(Y(H) + Y(0)) / 2 + 4} fontSize={11} fontFamily={font.body} fill={color.muted}>
           {`건물 ${H.toFixed(1)}m`}
         </SvgText>
         {/* 크레인 차체 */}
@@ -65,14 +67,35 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
             </SvgText>
           </G>
         ) : null}
-        {/* 작업반경 치수선 */}
-        <Line x1={X(0)} y1={height - 10} x2={X(R)} y2={height - 10} stroke={color.charcoal} strokeWidth={1} />
-        <Line x1={X(0)} y1={height - 15} x2={X(0)} y2={height - 5} stroke={color.charcoal} />
-        <Line x1={X(R)} y1={height - 15} x2={X(R)} y2={height - 5} stroke={color.charcoal} />
-        <SvgText x={(X(0) + X(R)) / 2} y={height - 14} fontSize={11} textAnchor="middle" fontFamily={font.mono} fill={color.charcoal}>
-          {`R ${R.toFixed(1)}m`}
-        </SvgText>
+        {/* 도달거리: 외벽 ~ 인양 지점, 건물 위 */}
+        {reach > 0 ? (
+          <G>
+            <Line x1={X(input.setback)} y1={Y(H) + 10} x2={X(R)} y2={Y(H) + 10} stroke={color.charcoal} strokeWidth={1} />
+            <Line x1={X(input.setback)} y1={Y(H) + 6} x2={X(input.setback)} y2={Y(H) + 14} stroke={color.charcoal} />
+            <Line x1={X(R)} y1={Y(H) + 6} x2={X(R)} y2={Y(H) + 14} stroke={color.charcoal} />
+            <SvgText x={(X(input.setback) + X(R)) / 2} y={Y(H) + 26} fontSize={11} textAnchor="middle" fontFamily={font.mono} fill={color.charcoal}>
+              {`도달 ${reach.toFixed(1)}m`}
+            </SvgText>
+          </G>
+        ) : null}
+        {/* 이격거리 */}
+        <Dim x1={X(0)} x2={X(input.setback)} y={height - 28} label={`이격 ${input.setback.toFixed(1)}m`} />
+        {/* 작업반경 */}
+        <Dim x1={X(0)} x2={X(R)} y={height - 8} label={`작업반경 R ${R.toFixed(1)}m`} tone={color.yellowDeep} />
       </Svg>
     </View>
+  );
+}
+
+function Dim({ x1, x2, y, label, tone = color.charcoal }: { x1: number; x2: number; y: number; label: string; tone?: string }) {
+  return (
+    <G>
+      <Line x1={x1} y1={y} x2={x2} y2={y} stroke={tone} strokeWidth={1} />
+      <Line x1={x1} y1={y - 4} x2={x1} y2={y + 4} stroke={tone} />
+      <Line x1={x2} y1={y - 4} x2={x2} y2={y + 4} stroke={tone} />
+      <SvgText x={(x1 + x2) / 2} y={y - 4} fontSize={11} textAnchor="middle" fontFamily={font.mono} fill={tone}>
+        {label}
+      </SvgText>
+    </G>
   );
 }

@@ -33,9 +33,9 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="review/input" options={{ title: '새 검토' }} />
-        <Stack.Screen name="review/select" options={{ title: '장비 선택' }} />
+        <Stack.Screen name="review/settings" options={{ title: '장비 설정' }} />
         <Stack.Screen name="review/result" options={{ title: '검토 결과' }} />
-        <Stack.Screen name="history" options={{ title: '검토 기록' }} />
+        <Stack.Screen name="history" options={{ title: '계산 기록' }} />
         <Stack.Screen name="equipment/index" options={{ title: '장비 제원표' }} />
         <Stack.Screen name="equipment/[id]" options={{ title: '장비 상세' }} />
       </Stack>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { DEFAULT_INPUT, evaluateCrane, lookupCapacity, requiredTipHeight, review, slingFor, ReviewInput } from '../calc';
+import { autoDistance, DEFAULT_INPUT, evaluateCrane, lookupCapacity, minSetback, normalizeInput, requiredTipHeight, review, slingFor, stepCrane, ReviewInput } from '../calc';
 import { SAMPLE_CRANES as CRANES, sample } from '../__fixtures__/cranes';
 
 const c25 = sample('sample-25');
@@ -36,7 +36,7 @@ describe('evaluateCrane', () => {
     const i = input();
     const e = evaluateCrane(c25, i);
     expect(e.feasible).toBe(true);
-    const R = i.setback + i.reach;
+    const R = i.radius;
     // tip = pivot + sqrt(L² - R²)
     expect(e.tipHeight).toBeCloseTo(c25.pivotHeight + Math.sqrt(e.boomLength ** 2 - R ** 2), 6);
     expect(e.tipHeight).toBeGreaterThanOrEqual(requiredTipHeight(i));
@@ -57,7 +57,7 @@ describe('evaluateCrane', () => {
   });
 
   it('flags radius beyond the longest boom', () => {
-    const e = evaluateCrane(c25, input({ setback: 20, reach: 15 }));
+    const e = evaluateCrane(c25, input({ setback: 20, radius: 35 }));
     expect(e.feasible).toBe(false);
     expect(e.reason).toBe('radius');
     expect(e.verdict).toBe('no');
@@ -105,5 +105,52 @@ describe('evaluateCrane with gaps in the chart', () => {
       expect(e.boomLength).toBeGreaterThan(23.8);
     }
     expect(e.capacity).toBeLessThanOrEqual(full.capacity);
+  });
+});
+
+describe('autoDistance (최대거리 자동계산)', () => {
+  it('finds the farthest reach that is still ok, and nothing farther is ok', () => {
+    const i = input();
+    const plan = autoDistance(c25, i, { setback: false, radius: false })!;
+    expect(plan).not.toBeNull();
+    expect(plan.verdict).toBe('ok');
+    expect(plan.setback).toBeGreaterThanOrEqual(minSetback(c25));
+    expect(evaluateCrane(c25, { ...i, ...plan }).verdict).toBe('ok');
+    const reach = plan.radius - plan.setback;
+    // 같은 이격거리에서 반경을 0.5m 늘리면 더 이상 '가능'이 아니어야 한다
+    expect(evaluateCrane(c25, { ...i, setback: plan.setback, radius: plan.radius + 0.5 }).verdict).not.toBe('ok');
+    expect(reach).toBeGreaterThan(0);
+  });
+
+  it('keeps locked values', () => {
+    const i = input({ setback: 9, radius: 12 });
+    const s = autoDistance(c25, i, { setback: true, radius: false })!;
+    expect(s.setback).toBe(9);
+    const r = autoDistance(c25, i, { setback: false, radius: true })!;
+    expect(r.radius).toBe(12);
+  });
+
+  it('returns null when nothing works', () => {
+    expect(autoDistance(c25, input({ loadWeight: 50 }), { setback: false, radius: false })).toBeNull();
+  });
+});
+
+describe('stepCrane (UP/DN)', () => {
+  it('moves one class up or down and stops at the ends', () => {
+    const sorted = [...CRANES].sort((a, b) => a.classTon - b.classTon);
+    expect(stepCrane(sorted[0].id, 1, CRANES)!.id).toBe(sorted[1].id);
+    expect(stepCrane(sorted[1].id, -1, CRANES)!.id).toBe(sorted[0].id);
+    expect(stepCrane(sorted[0].id, -1, CRANES)).toBeNull();
+    expect(stepCrane(sorted[sorted.length - 1].id, 1, CRANES)).toBeNull();
+  });
+});
+
+describe('normalizeInput', () => {
+  it('converts old saved reach into radius', () => {
+    const old = { ...DEFAULT_INPUT, setback: 10, reach: 5 } as Partial<ReviewInput> & { reach: number };
+    delete (old as Partial<ReviewInput>).radius;
+    const n = normalizeInput(old);
+    expect(n.radius).toBe(15);
+    expect('reach' in n).toBe(false);
   });
 });

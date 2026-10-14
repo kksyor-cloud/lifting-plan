@@ -13,8 +13,8 @@ export type ReviewInput = {
   riggingWeight: number;
   /** 크레인 선회 중심 ~ 건물 외벽 수평거리 (m) */
   setback: number;
-  /** 건물 외벽 ~ 인양 지점 수평거리 (m) */
-  reach: number;
+  /** 작업반경: 크레인 선회 중심 ~ 인양 지점 수평거리 (m). 도달거리 = 작업반경 - 이격거리 */
+  radius: number;
   /** 자재 규격. 없으면 기본 높이 여유를 쓴다. */
   dims: LoadDims | null;
   /** 줄걸이 각도, 수평 기준 (도) */
@@ -66,6 +66,8 @@ export type Sling = {
 
 export type ReviewResult = {
   radius: number;
+  /** 도달거리: 건물 외벽 ~ 인양 지점 (m) */
+  reach: number;
   requiredTipHeight: number;
   sling: Sling | null;
   evals: CraneEval[];
@@ -130,7 +132,7 @@ function geometry(crane: Crane, L: number, R: number, setback: number, H: number
 }
 
 export function evaluateCrane(crane: Crane, input: ReviewInput): CraneEval {
-  const R = input.setback + input.reach;
+  const R = input.radius;
   const H = input.buildingHeight;
   const need = requiredTipHeight(input);
   const totalLoad = input.loadWeight + input.riggingWeight + crane.hookBlockWeight;
@@ -195,10 +197,11 @@ export function evaluateCrane(crane: Crane, input: ReviewInput): CraneEval {
 }
 
 export function review(input: ReviewInput, cranes: Crane[] = CRANES): ReviewResult {
-  const evals = [...cranes].sort((a, b) => a.classTon - b.classTon).map((c) => evaluateCrane(c, input));
+  const evals = sortCranes(cranes).map((c) => evaluateCrane(c, input));
   const pick = evals.find((e) => e.verdict === 'ok') ?? evals.find((e) => e.verdict === 'warn') ?? null;
   return {
-    radius: input.setback + input.reach,
+    radius: input.radius,
+    reach: reachOf(input),
     requiredTipHeight: requiredTipHeight(input),
     sling: slingFor(input.dims, input.slingAngle, input.loadWeight + input.riggingWeight),
     evals,
@@ -221,14 +224,79 @@ export const DEFAULT_INPUT: ReviewInput = {
   loadWeight: 1.0,
   riggingWeight: 0.05,
   setback: 8,
-  reach: 6,
+  radius: 14,
   dims: null,
   slingAngle: 60,
   groundBearing: 150,
   padSize: 1.2,
 };
 
-/** 예전에 저장한 입력에 새 항목이 없으면 기본값을 채운다. */
-export function normalizeInput(i: Partial<ReviewInput>): ReviewInput {
-  return { ...DEFAULT_INPUT, ...i };
+/** 예전에 저장한 입력에 새 항목이 없으면 기본값을 채운다. 예전 입력은 작업반경 대신 도달거리를 저장했다. */
+export function normalizeInput(i: Partial<ReviewInput> & { reach?: number }): ReviewInput {
+  const { reach, ...rest } = i;
+  const radius = rest.radius ?? (reach != null ? (rest.setback ?? DEFAULT_INPUT.setback) + reach : undefined);
+  return { ...DEFAULT_INPUT, ...rest, ...(radius != null ? { radius } : {}) };
 }
+
+export const reachOf = (input: ReviewInput) => input.radius - input.setback;
+
+/** 거리 조정 단위 (m) */
+export const DIST_STEP = 0.5;
+/** 이격거리 상한 (m) */
+export const MAX_SETBACK = 40;
+
+const snap = (v: number) => Math.round(v / DIST_STEP) * DIST_STEP;
+
+/** 아웃리거를 편 장비가 외벽에 붙을 수 있는 최소 이격거리: 아웃리거 폭의 절반 + 1m */
+export const minSetback = (crane: Crane) => Math.max(3, Math.ceil((crane.outriggerSpan / 2 + 1) / DIST_STEP) * DIST_STEP);
+
+/** 하중표의 가장 먼 반경 (m) */
+export const maxChartRadius = (crane: Crane) => Math.max(...crane.chart.flatMap((r) => r.capacities.map(([x]) => x)));
+
+export type Locks = { setback: boolean; radius: boolean };
+
+/**
+ * 최대거리 자동계산: 이 장비로 건물 안쪽 가장 먼 곳(도달거리 최대)까지 인양할 수 있는 이격거리·작업반경.
+ * 고정(자물쇠)한 값은 그대로 두고 나머지만 찾는다. 판정 '가능'을 먼저 찾고, 없으면 '주의'까지 허용한다.
+ * 같은 도달거리면 이격거리가 짧은 쪽을 고른다. 찾지 못하면 null.
+ */
+export function autoDistance(crane: Crane, input: ReviewInput, locks: Locks): { setback: number; radius: number; verdict: Verdict } | null {
+  const maxR = maxChartRadius(crane);
+  const setbacks: number[] = [];
+  if (locks.setback) setbacks.push(input.setback);
+  else for (let s = minSetback(crane); s <= Math.min(maxR, MAX_SETBACK) + 1e-9; s = snap(s + DIST_STEP)) setbacks.push(s);
+
+  for (const accept of [['ok'], ['ok', 'warn']] as Verdict[][]) {
+    let best: { setback: number; radius: number; verdict: Verdict } | null = null;
+    for (const setback of setbacks) {
+      const radii: number[] = [];
+      if (locks.radius) {
+        if (input.radius >= setback) radii.push(input.radius);
+      } else {
+        // 도달거리가 이미 찾은 값보다 길어질 수 없으면 더 볼 필요가 없다.
+        if (best && maxR - setback <= best.radius - best.setback) break;
+        for (let r = snap(Math.floor(maxR / DIST_STEP) * DIST_STEP); r >= setback - 1e-9; r = snap(r - DIST_STEP)) radii.push(r);
+      }
+      for (const radius of radii) {
+        if (best && radius - setback <= best.radius - best.setback) break;
+        const ev = evaluateCrane(crane, { ...input, setback, radius });
+        if (accept.includes(ev.verdict)) {
+          best = { setback, radius, verdict: ev.verdict };
+          break;
+        }
+      }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+/** UP/DN: 등급 순으로 한 단계 큰(+1) 또는 작은(-1) 장비. 끝이면 null. */
+export function stepCrane(id: string | null, dir: 1 | -1, cranes: Crane[] = CRANES): Crane | null {
+  const list = sortCranes(cranes);
+  const i = list.findIndex((c) => c.id === id);
+  if (i === -1) return list[dir === 1 ? 0 : list.length - 1] ?? null;
+  return list[i + dir] ?? null;
+}
+
+export const sortCranes = (cranes: Crane[]) => [...cranes].sort((a, b) => a.classTon - b.classTon || a.name.localeCompare(b.name));

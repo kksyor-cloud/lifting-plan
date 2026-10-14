@@ -42,6 +42,12 @@ export type Crane = {
   chartDoc?: string;
   /** 공식 제원표 PDF */
   specDoc?: string;
+  /** 장비 전장 × 전폭 × 전고 (카탈로그 글 그대로) */
+  size?: string;
+  /** 최대 정격하중 (카탈로그 글, 예: 25t @ 3.5m) */
+  maxCap?: string;
+  /** 하중표 정격 조건 (예: 360° 정격, 아웃리거 최대) */
+  rating?: string;
   /** 가정값을 쓴 항목 설명 */
   assumed: string[];
   sample: boolean;
@@ -77,7 +83,7 @@ export function toCrane(e: CatalogEntry): Crane | null {
   if (hook == null) assumed.push('훅 블록 질량 0.5 t');
   return {
     id: e.id,
-    name: `${makerLabel(e.maker)} ${e.model}`,
+    name: `${e.classTon}톤 크레인 (${makerLabel(e.maker)} ${e.model})`,
     maker: e.maker,
     model: e.model,
     classTon: e.classTon,
@@ -93,6 +99,9 @@ export function toCrane(e: CatalogEntry): Crane | null {
     source: `${makerLabel(e.maker)} 공식 하중표 PDF 판독값 (주 붐, ${e.chart.rating ?? '아웃리거 최대'})`,
     chartDoc: e.chartDoc,
     specDoc: e.sourceDoc,
+    size: e.size,
+    maxCap: e.maxCap,
+    rating: e.chart.rating,
     assumed,
     sample: false,
   };

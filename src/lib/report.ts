@@ -14,16 +14,17 @@ function row(k: string, v: string, strong = false) {
 
 /** 측면도 SVG (화면 Diagram 과 같은 좌표 계산) */
 export function diagramSvg(input: ReviewInput, ev: CraneEval, w = 640, h = 300): string {
-  const R = input.setback + input.reach;
+  const R = input.radius;
+  const reach = R - input.setback;
   const H = input.buildingHeight;
   const hp = ev.crane.pivotHeight;
   const tip = Math.max(ev.tipHeight, hp);
-  const bldgW = Math.max(input.reach + 4, 8);
+  const bldgW = Math.max(reach + 4, 8);
   const minX = -ev.crane.outriggerSpan / 2 - 1.5;
   const maxX = input.setback + bldgW + 1;
   const maxY = Math.max(tip, H) * 1.12 + 2;
   const pad = { l: 10, r: 10, t: 12, b: 30 };
-  const s = Math.min((w - pad.l - pad.r) / (maxX - minX), (h - pad.t - pad.b) / maxY);
+  const s = Math.max(0.01, Math.min((w - pad.l - pad.r) / (maxX - minX), (h - pad.t - pad.b) / maxY));
   const X = (x: number) => (pad.l + (x - minX) * s).toFixed(1);
   const Y = (y: number) => (h - pad.b - y * s).toFixed(1);
   const loadH = input.dims?.height ?? 1.0;
@@ -96,7 +97,7 @@ ${ev.feasible && !ev.chartVerified ? '<p class="warn">적용한 하중표 칸은
 <div class="grid">
 <div><h2>검토 값</h2><table>
 ${row('건물 높이', m(input.buildingHeight))}
-${row('작업반경 (이격 + 도달)', `${m(result.radius)} (${input.setback} + ${input.reach})`)}
+${row('작업반경 (이격 + 도달)', `${m(result.radius)} (${input.setback} + ${result.reach.toFixed(1)})`)}
 ${row('붐 길이 / 각도', ev.boomAngle > 0 ? `${m(ev.boomLength)} / ${ev.boomAngle.toFixed(1)}°` : '—')}
 ${row('붐 끝(Tip) 높이', ev.boomAngle > 0 ? m(ev.tipHeight) : '—')}
 ${row('필요 Tip 높이', m(result.requiredTipHeight))}

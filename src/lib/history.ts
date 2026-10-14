@@ -42,3 +42,7 @@ export async function deleteReview(id: string) {
   const list = await loadReviews();
   await write(list.filter((r) => r.id !== id));
 }
+
+export async function clearReviews() {
+  await write([]);
+}
