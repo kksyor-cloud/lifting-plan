@@ -1,6 +1,7 @@
-import { Stack, useFocusEffect } from 'expo-router';
+import { Tabs, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import { Icon } from '@/components/Icon';
 import { RecentRow } from '@/components/RecentRow';
 import { Card, T } from '@/components/ui';
 import { clearReviews, deleteReview, loadReviews, SavedReview } from '@/lib/history';
@@ -18,14 +19,12 @@ export default function HistoryScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: space.sm }}>
-      <Stack.Screen
+      <Tabs.Screen
         options={{
           headerRight: () =>
             list.length ? (
               <Pressable accessibilityRole="button" accessibilityLabel="전체 삭제" hitSlop={10} onPress={() => setConfirmAll(true)} style={{ paddingHorizontal: space.md }}>
-                <T style={{ fontFamily: font.bold }} tone={color.no}>
-                  전체 삭제
-                </T>
+                <Icon name="trash" color={color.no} />
               </Pressable>
             ) : null,
         }}

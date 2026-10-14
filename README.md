@@ -29,12 +29,11 @@ An Android APK is built by GitHub Actions (`.github/workflows/android-apk.yml`) 
 ```
 src/
   app/                   screens (Expo Router)
-    index.tsx            home
-    review/input.tsx     1. conditions: building height, load weight, optional load size and sling angle
-    review/settings.tsx  2. crane settings: UP/DN, max-reach auto calc, setback and radius sliders with locks
-    review/result.tsx    3. review report
-    history.tsx          saved reviews
-    equipment/           equipment catalog (filters, search, model detail)
+    (tabs)/              bottom tabs: home, about, FIT (starts a review), equipment catalog, saved reviews
+    review/input.tsx     1. INPUT: building height, load weight, optional load size and sling angle
+    review/settings.tsx  2. SETTINGS: crane type, maker and model, UP/DN, max-reach auto calc, setback and radius sliders
+    review/result.tsx    3. RESULT: review report
+    equipment/[id].tsx   model detail
   lib/
     calc.ts              lift calculation (pure functions, tested)
     catalog.ts           equipment catalog (292 models, filters)
@@ -49,7 +48,7 @@ src/
 
 ## How the calculation works
 
-The review flow follows the Crane Fit app: enter the fixed conditions, then position the crane.
+The screen layout and review flow follow the Crane Fit app: bottom tabs with a centre FIT button, then INPUT > SETTINGS > RESULT.
 
 - Working radius R = setback (crane center to building wall) + reach (wall to lift point)
 - Required tip height = building height + 1.0 m + (load height + sling height, 2.5 m if no size is given) + 2.0 m

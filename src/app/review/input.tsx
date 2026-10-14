@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Button, Footer, SliderField, StepBar, T } from '@/components/ui';
+import { Button, Footer, SliderField, T } from '@/components/ui';
 import { LoadDims } from '@/lib/calc';
 import { useReview } from '@/lib/review-context';
 import { color, font, radius, space } from '@/theme';
@@ -49,7 +49,6 @@ export default function InputScreen() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <StepBar step={0} />
 
         <T variant="label">고정 조건</T>
         <SliderField

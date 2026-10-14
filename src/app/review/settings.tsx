@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CranePicker } from '@/components/CranePicker';
 import { Diagram } from '@/components/Diagram';
-import { Badge, Button, Card, Chip, Footer, NumberField, SliderField, StepBar, T, VerdictBadge, fmt } from '@/components/ui';
+import { Badge, Button, Card, Chip, Footer, NumberField, SliderField, T, VerdictBadge, fmt } from '@/components/ui';
 import { CraneEval, FAIL_LABEL, MAX_SETBACK, maxChartRadius, minSetback, sortCranes } from '@/lib/calc';
 import { CRANES } from '@/lib/cranes';
 import { BEARING_PRESETS, PAD_PRESETS } from '@/lib/ground';
@@ -40,22 +40,28 @@ export default function SettingsScreen() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.body}>
-        <StepBar step={1} />
 
-        <CranePicker craneId={crane.id} onSelect={(id) => { setCraneId(id); setNote(null); }} />
-        <View style={styles.grid}>
-          <StepBtn label="▲ UP" sub="한 단계 큰 장비" tone={color.ok} disabled={idx === ORDER.length - 1} onPress={() => onStep(1)} />
-          <StepBtn label="▼ DN" sub="한 단계 작은 장비" tone={color.no} disabled={idx === 0} onPress={() => onStep(-1)} />
-        </View>
+        <CranePicker
+          craneId={crane.id}
+          onSelect={(id) => {
+            setCraneId(id);
+            setNote(null);
+          }}
+          onStep={onStep}
+          canUp={idx < ORDER.length - 1}
+          canDown={idx > 0}
+        />
         <Button label="✦  최대거리 자동계산" onPress={onAuto} />
         {note ? <T tone={color.no}>{note}</T> : null}
 
         <Card style={{ padding: space.sm, gap: 0 }}>
           <View style={styles.diagramHead}>
-            <T style={{ fontFamily: font.bold }}>{crane.name}</T>
+            <T style={{ fontFamily: font.bold, flexShrink: 1 }} numberOfLines={1}>
+              {crane.name}
+            </T>
             {ev.feasible && !ev.chartVerified ? <Badge label="원본 대조" kind="outline" /> : null}
           </View>
-          <Diagram input={input} ev={ev} height={300} />
+          <Diagram input={input} ev={ev} height={330} topPad={112} />
           <View style={styles.overlay}>
             <Text style={{ fontFamily: font.bold, fontSize: 16, color: verdictColor[ev.verdict] }}>{verdictText(ev)}</Text>
             <OverlayLine k="자재 중량" v={ev.feasible ? `${input.loadWeight}t (제원의 ${fmt.pct(ev.ratio)} / 최대 ${ev.capacity}t)` : `${input.loadWeight}t`} />
@@ -128,18 +134,9 @@ const verdictText = (ev: CraneEval) => ({ ok: '가능', warn: '주의 (하중률
 
 function OverlayLine({ k, v }: { k: string; v: string }) {
   return (
-    <Text style={{ fontFamily: font.body, fontSize: 13, lineHeight: 19, color: color.charcoal }}>
+    <Text style={{ fontFamily: font.body, fontSize: 12, lineHeight: 17, color: color.charcoal }}>
       {k}: <Text style={{ fontFamily: font.bold }}>{v}</Text>
     </Text>
-  );
-}
-
-function StepBtn({ label, sub, tone, onPress, disabled }: { label: string; sub: string; tone: string; onPress: () => void; disabled?: boolean }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${label} ${sub}`} onPress={onPress} disabled={disabled} style={({ pressed }) => [styles.type, { flex: 1 }, { borderWidth: 1.5, borderColor: tone, backgroundColor: pressed ? color.yellowSoft : color.surface }, disabled && { opacity: 0.35 }]}>
-      <Text style={{ fontFamily: font.bold, fontSize: 16, color: tone }}>{label}</Text>
-      <Text style={{ fontFamily: font.body, fontSize: 10, color: color.muted }}>{sub}</Text>
-    </Pressable>
   );
 }
 
@@ -175,7 +172,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', gap: space.sm },
   type: { height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: color.line },
   diagramHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm, paddingTop: space.xs },
-  overlay: { marginHorizontal: space.sm, marginBottom: space.xs, backgroundColor: color.paper, borderRadius: radius.sm, padding: space.sm, gap: 1 },
+  overlay: { position: 'absolute', top: 38, right: 10, maxWidth: '60%', backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: radius.md, borderWidth: 1, borderColor: color.line, padding: space.sm, gap: 1, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 3 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   fold: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: space.md, borderTopWidth: 1, borderTopColor: color.line },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.md },

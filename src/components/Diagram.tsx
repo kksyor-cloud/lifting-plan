@@ -5,7 +5,7 @@ import { CraneEval, DEFAULT_LOAD_STACK, ReviewInput, ROOF_MARGIN } from '@/lib/c
 import { color, font, verdictColor } from '@/theme';
 
 // Side view: crane, boom, building, hook and load. Every value comes from the same evaluation result (ev).
-export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: CraneEval; height?: number }) {
+export function Diagram({ input, ev, height = 260, topPad = 10 }: { input: ReviewInput; ev: CraneEval; height?: number; topPad?: number }) {
   const [w, setW] = useState(320);
   const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width);
 
@@ -19,7 +19,7 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
   const maxX = input.setback + bldgW + 1;
   const maxY = Math.max(tip, H) * 1.12 + 2;
 
-  const pad = { l: 8, r: 8, t: 10, b: 44 };
+  const pad = { l: 8, r: 8, t: topPad, b: 44 };
   // Width can be 0 before the first layout, so keep the scale from going negative.
   const s = Math.max(0.01, Math.min((w - pad.l - pad.r) / (maxX - minX), (height - pad.t - pad.b) / maxY));
   const X = (x: number) => pad.l + (x - minX) * s;
@@ -34,6 +34,15 @@ export function Diagram({ input, ev, height = 260 }: { input: ReviewInput; ev: C
   return (
     <View onLayout={onLayout} style={{ width: '100%', height }}>
       <Svg width={w} height={height}>
+        {/* 5 m grid */}
+        <G opacity={0.5}>
+          {Array.from({ length: Math.ceil((maxX - minX) / 5) + 1 }, (_, i) => Math.ceil(minX / 5) * 5 + i * 5).map((x) => (
+            <Line key={`x${x}`} x1={X(x)} y1={0} x2={X(x)} y2={Y(0)} stroke={color.line} strokeWidth={1} />
+          ))}
+          {Array.from({ length: Math.ceil(height / (5 * s)) + 1 }, (_, i) => i * 5).map((y) => (
+            <Line key={`y${y}`} x1={0} y1={Y(y)} x2={w} y2={Y(y)} stroke={color.line} strokeWidth={1} />
+          ))}
+        </G>
         {/* Ground */}
         <Line x1={0} y1={Y(0)} x2={w} y2={Y(0)} stroke={color.warm} strokeWidth={1.5} />
         {/* Building */}

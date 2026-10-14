@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Icon } from '@/components/Icon';
 import { T } from '@/components/ui';
 import { CATALOG, Maker, MAKERS, tonLabel } from '@/lib/catalog';
 import { CRANES, findCrane } from '@/lib/cranes';
@@ -11,7 +12,20 @@ import { color, font, radius, space } from '@/theme';
 const CHARTED = new Set(CRANES.map((c) => c.id));
 const countFor = (m: Maker) => CRANES.filter((c) => c.maker === m).length;
 
-export function CranePicker({ craneId, onSelect }: { craneId: string; onSelect: (id: string) => void }) {
+export function CranePicker({
+  craneId,
+  onSelect,
+  onStep,
+  canUp,
+  canDown,
+}: {
+  craneId: string;
+  onSelect: (id: string) => void;
+  /** UP(+1) / DN(-1) */
+  onStep: (dir: 1 | -1) => void;
+  canUp: boolean;
+  canDown: boolean;
+}) {
   const crane = findCrane(craneId);
   const [maker, setMaker] = useState<Maker>((crane?.maker as Maker) ?? 'Tadano');
   const [open, setOpen] = useState(false);
@@ -30,28 +44,35 @@ export function CranePicker({ craneId, onSelect }: { craneId: string; onSelect: 
   const showingCurrent = crane?.maker === maker;
 
   return (
-    <View style={styles.box}>
-      <Row label="종류">
+    <View style={{ gap: space.sm }}>
+      <View style={styles.grid}>
         <Seg label="이동식 크레인" active />
+        <StepBtn label="▲  UP" tone={color.ok} bg="#E3F3E8" disabled={!canUp} onPress={() => onStep(1)} />
+      </View>
+      <View style={styles.grid}>
         <Seg label="이동타워 크레인" sub="준비 중" disabled />
-      </Row>
-      <Row label="제조사">
-        <Pressable accessibilityRole="button" accessibilityLabel="제조사 선택" onPress={() => setMakerOpen(true)} style={styles.select}>
-          <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.bold, fontSize: 15, color: color.charcoal }}>
-            {MAKERS.find((m) => m.key === maker)?.label}
-          </Text>
-          <Text style={{ fontFamily: font.mono, fontSize: 12, color: color.muted }}>{available ? `하중표 ${available}종` : '하중표 없음'}</Text>
-          <Text style={{ color: color.charcoal, fontSize: 14 }}>▼</Text>
+        <StepBtn label="▼  DN" tone={color.no} bg="#FBE4E4" disabled={!canDown} onPress={() => onStep(-1)} />
+      </View>
+      <View style={styles.grid}>
+        <Pressable accessibilityRole="button" accessibilityLabel="제조사 선택" onPress={() => setMakerOpen(true)} style={[styles.select, { flex: 1 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cap}>제조사</Text>
+            <Text numberOfLines={1} style={styles.val}>
+              {MAKERS.find((m) => m.key === maker)?.label}
+            </Text>
+          </View>
+          <Icon name="down" size={18} />
         </Pressable>
-      </Row>
-      <Row label="장비명">
-        <Pressable accessibilityRole="button" accessibilityLabel="장비명 선택" onPress={() => setOpen(true)} style={styles.select}>
-          <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.bold, fontSize: 15, color: showingCurrent ? color.charcoal : color.warm }}>
-            {showingCurrent && crane ? `${tonLabel(crane.classTon)} / ${crane.model}` : available ? '장비를 고르세요' : '하중표 등록 기종 없음'}
-          </Text>
-          <Text style={{ color: color.charcoal, fontSize: 14 }}>▼</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="장비명 선택" onPress={() => setOpen(true)} style={[styles.select, { flex: 1.6 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cap}>장비명</Text>
+            <Text numberOfLines={1} style={[styles.val, !showingCurrent && { color: color.warm }]}>
+              {showingCurrent && crane ? `${tonLabel(crane.classTon)} / ${crane.model}` : available ? '장비를 고르세요' : '하중표 등록 기종 없음'}
+            </Text>
+          </View>
+          <Icon name="down" size={18} />
         </Pressable>
-      </Row>
+      </View>
 
       <MakerSheet
         open={makerOpen}
@@ -180,28 +201,30 @@ function ModelSheet({
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Seg({ label, sub, active, disabled }: { label: string; sub?: string; active?: boolean; disabled?: boolean }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-      <T style={{ width: 48, fontFamily: font.bold, color: color.muted }}>{label}</T>
-      <View style={{ flex: 1, flexDirection: 'row', gap: 6 }}>{children}</View>
+    <View accessibilityRole="button" accessibilityState={{ selected: !!active, disabled: !!disabled }} style={[styles.seg, active ? { backgroundColor: color.yellow } : { backgroundColor: '#EFEAE0' }]}>
+      <Text style={{ fontFamily: font.bold, fontSize: 15, color: disabled ? color.warm : color.charcoal }}>{label}</Text>
+      {sub ? <Text style={{ fontFamily: font.body, fontSize: 10, color: color.warm }}>{sub}</Text> : null}
     </View>
   );
 }
 
-function Seg({ label, sub, active, disabled }: { label: string; sub?: string; active?: boolean; disabled?: boolean }) {
+function StepBtn({ label, tone, bg, onPress, disabled }: { label: string; tone: string; bg: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <View accessibilityRole="button" accessibilityState={{ selected: !!active, disabled: !!disabled }} style={[styles.seg, active && { backgroundColor: color.yellow, borderColor: color.yellow }, disabled && { opacity: 0.5 }]}>
-      <Text style={{ fontFamily: font.bold, fontSize: 13, color: color.charcoal }}>{label}</Text>
-      {sub ? <Text style={{ fontFamily: font.body, fontSize: 10, color: color.muted }}>{sub}</Text> : null}
-    </View>
+    <Pressable accessibilityRole="button" accessibilityLabel={label.includes('UP') ? '한 단계 큰 장비' : '한 단계 작은 장비'} onPress={onPress} disabled={disabled} style={({ pressed }) => [styles.step, { backgroundColor: bg }, pressed && { opacity: 0.75 }, disabled && { opacity: 0.4 }]}>
+      <Text style={{ fontFamily: font.bold, fontSize: 17, color: tone }}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  box: { backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, padding: space.md, gap: space.md },
-  seg: { flex: 1, height: 44, borderRadius: radius.sm, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
-  select: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, height: 46, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: 1.5, borderColor: color.charcoal, backgroundColor: color.surface },
+  grid: { flexDirection: 'row', gap: space.sm },
+  seg: { flex: 1.6, height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  step: { flex: 1, height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  cap: { fontFamily: font.body, fontSize: 11, color: color.muted },
+  val: { fontFamily: font.bold, fontSize: 15, color: color.charcoal },
+  select: { flexDirection: 'row', alignItems: 'center', gap: space.sm, height: 56, paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: color.charcoal, backgroundColor: color.surface },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: { maxHeight: '75%', backgroundColor: color.paper, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
   sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: space.lg, paddingBottom: space.sm },

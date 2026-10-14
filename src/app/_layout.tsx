@@ -5,6 +5,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import { ReviewHeader } from '@/components/ReviewHeader';
 import { ReviewProvider } from '@/lib/review-context';
 import { color, font } from '@/theme';
 
@@ -31,13 +32,11 @@ export default function RootLayout() {
           headerBackButtonDisplayMode: 'minimal',
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="review/input" options={{ title: '새 검토' }} />
-        <Stack.Screen name="review/settings" options={{ title: '장비 설정' }} />
-        <Stack.Screen name="review/result" options={{ title: '검토 결과' }} />
-        <Stack.Screen name="history" options={{ title: '계산 기록' }} />
-        <Stack.Screen name="equipment/index" options={{ title: '장비 제원표' }} />
-        <Stack.Screen name="equipment/[id]" options={{ title: '장비 상세' }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="review/input" options={{ header: () => <ReviewHeader step={0} /> }} />
+        <Stack.Screen name="review/settings" options={{ header: () => <ReviewHeader step={1} /> }} />
+        <Stack.Screen name="review/result" options={{ header: () => <ReviewHeader step={2} /> }} />
+        <Stack.Screen name="equipment/[id]" options={{ title: '장비 상세', headerStyle: { backgroundColor: color.surface } }} />
       </Stack>
     </ReviewProvider>
   );

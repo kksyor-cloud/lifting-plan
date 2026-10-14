@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Diagram } from '@/components/Diagram';
-import { Button, Card, Footer, KV, Section, StepBar, T, VerdictBadge, fmt } from '@/components/ui';
+import { Icon } from '@/components/Icon';
+import { Button, Card, KV, Section, T, VerdictBadge, fmt } from '@/components/ui';
 import { DEFAULT_INPUT, FAIL_LABEL, HOOK_ALLOWANCE, maxChartRadius, MIN_WALL_CLEARANCE, ROOF_MARGIN, WARN_RATIO } from '@/lib/calc';
 import { exportReport } from '@/lib/export-report';
 import { REACTION_SHARE } from '@/lib/ground';
@@ -48,11 +49,10 @@ export default function ResultScreen() {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.body}>
-        <StepBar step={2} />
 
         <View style={styles.header}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={styles.headTitle}>■ 리프팅 플랜 검토서</Text>
+            <Text style={styles.headTitle}>■ Lifting Plan_report</Text>
             <Text style={styles.headDate}>{today}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
@@ -75,7 +75,7 @@ export default function ResultScreen() {
               <Text style={styles.site}>{input.siteName || '현장명을 입력하세요'}</Text>
             )}
             <Pressable accessibilityRole="button" accessibilityLabel="현장명 편집" hitSlop={10} onPress={() => setEditing(!editing)}>
-              <Text style={{ color: color.yellow, fontSize: 18 }}>{editing ? '✓' : '✎'}</Text>
+              {editing ? <Text style={{ color: color.yellow, fontSize: 18 }}>✓</Text> : <Icon name="pencil" size={20} color={color.yellow} />}
             </Pressable>
           </View>
         </View>
@@ -172,16 +172,14 @@ export default function ResultScreen() {
             이 검토 결과는 입력값을 바탕으로 한 참고용 계산값입니다. 실제 작업 전 반드시 다음을 확인하세요.{'\n'}• 해당 크레인 제조사의 공인 하중표(Load Chart){'\n'}• 안전율 적용 및 작업계획서 작성{'\n'}• 자격을 갖춘 신호수와 작업지휘자 배치{'\n'}• 지반 조건, 풍속, 주변 장애물 등 현장 조건 별도 검토
           </T>
         </View>
-      </ScrollView>
-      <Footer>
         <View style={{ flexDirection: 'row', gap: space.sm }}>
           <Button label={exporting ? 'PDF 만드는 중' : 'PDF 내보내기'} kind="secondary" disabled={exporting} onPress={exportPdf} style={{ flex: 1 }} />
-          <Button label={saved ? '저장됨' : '검토 저장'} disabled={saved} onPress={save} style={{ flex: 1 }} />
+          <Button label={saved ? '저장됨 ✓' : '검토 저장'} disabled={saved} onPress={save} style={{ flex: 1 }} />
         </View>
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
+        <View style={{ flexDirection: 'row', gap: space.sm, marginTop: -space.md }}>
           <Button label="← 이전으로" kind="secondary" onPress={() => router.back()} style={{ flex: 1 }} />
           <Button
-            label="↻ 새로 검토"
+            label="↻ 새로검토"
             kind="yellow"
             onPress={() => {
               reset(DEFAULT_INPUT);
@@ -190,7 +188,7 @@ export default function ResultScreen() {
             style={{ flex: 1 }}
           />
         </View>
-      </Footer>
+      </ScrollView>
     </View>
   );
 }
@@ -216,7 +214,7 @@ function sizeParts(size?: string): [string, string][] {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, gap: space.xl, paddingBottom: 200 },
+  body: { padding: 16, gap: space.xl, paddingBottom: space.xxl * 2 },
   header: { backgroundColor: color.charcoal, borderRadius: radius.sm, padding: space.lg, gap: space.sm },
   headTitle: { fontFamily: font.bold, fontSize: 18, color: '#FFFFFF' },
   headDate: { fontFamily: font.mono, fontSize: 14, color: '#D8D3C8' },
