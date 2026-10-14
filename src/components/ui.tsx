@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, TextProps, View, ViewStyle } from 'react-native';
+import { ReactNode, useRef, useState } from 'react';
+import { GestureResponderEvent, LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, TextProps, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Verdict, VERDICT_LABEL } from '@/lib/calc';
 import { color, font, radius, space, verdictColor } from '@/theme';
@@ -82,7 +82,7 @@ export function Chip({ label, active, onPress }: { label: string; active: boolea
 
 const round = (v: number, step: number) => Math.round(v / step) * step;
 
-/** 장갑 낀 손으로도 쓰기 쉬운 숫자 입력: 큰 단위/작은 단위 ± 버튼 + 직접 입력 */
+/** Number input that is easy to use with gloves on: coarse/fine ± buttons plus direct entry */
 export function NumberField({
   label,
   unit,
@@ -167,7 +167,7 @@ export function KV({ k, v, strong }: { k: string; v: string; strong?: boolean })
   );
 }
 
-const STEPS = ['조건 입력', '장비 선택', '검토 결과'];
+const STEPS = ['조건 입력', '장비 설정', '검토 결과'];
 
 export function StepBar({ step }: { step: 0 | 1 | 2 }) {
   return (
@@ -193,10 +193,128 @@ export function Badge({ label, kind }: { label: string; kind: 'yellow' | 'outlin
   );
 }
 
-/** 화면 아래 고정 버튼 영역 */
+/** Button area pinned to the bottom of the screen */
 export function Footer({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   return <View style={[styles.footer, { paddingBottom: space.lg + insets.bottom }]}>{children}</View>;
+}
+
+/** Drag-to-change slider. Uses only touch responders, shared by web and native. */
+export function Slider({ value, min, max, step, onChange, disabled }: { value: number; min: number; max: number; step: number; onChange: (v: number) => void; disabled?: boolean }) {
+  const [width, setWidth] = useState(1);
+  const origin = useRef(0);
+  const span = Math.max(max - min, 1e-9);
+  const frac = Math.min(1, Math.max(0, (value - min) / span));
+  const emit = (x: number) => {
+    const f = Math.min(1, Math.max(0, x / width));
+    const v = Math.round((min + f * span) / step) * step;
+    onChange(Number(Math.min(max, Math.max(min, v)).toFixed(4)));
+  };
+  return (
+    <View
+      accessibilityRole="adjustable"
+      onLayout={(e: LayoutChangeEvent) => setWidth(Math.max(1, e.nativeEvent.layout.width))}
+      onStartShouldSetResponder={() => !disabled}
+      onMoveShouldSetResponder={() => !disabled}
+      onResponderTerminationRequest={() => false}
+      onResponderGrant={(e: GestureResponderEvent) => {
+        // Anchor the origin in screen coordinates so tracking continues when the finger leaves the slider.
+        origin.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
+        emit(e.nativeEvent.locationX);
+      }}
+      onResponderMove={(e: GestureResponderEvent) => emit(e.nativeEvent.pageX - origin.current)}
+      style={[styles.slider, disabled && { opacity: 0.4 }]}
+    >
+      <View pointerEvents="none" style={styles.sliderTrack}>
+        <View style={[styles.sliderFill, { width: `${frac * 100}%` }]} />
+      </View>
+      <View pointerEvents="none" style={[styles.sliderThumb, { left: frac * width - 13 }]} />
+    </View>
+  );
+}
+
+/** Crane Fit-style input row: title·value(·lock) / coarse−·fine− · slider · fine+·coarse+ */
+export function SliderField({
+  label,
+  value,
+  unit,
+  min,
+  max,
+  big,
+  small,
+  onChange,
+  digits = 1,
+  locked,
+  onToggleLock,
+  disabled,
+  extra,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  min: number;
+  max: number;
+  big: number;
+  small: number;
+  onChange: (v: number) => void;
+  digits?: number;
+  locked?: boolean;
+  onToggleLock?: () => void;
+  disabled?: boolean;
+  extra?: ReactNode;
+}) {
+  const set = (v: number) => onChange(Math.min(max, Math.max(min, Number(round(v, small).toFixed(digits)))));
+  const off = disabled || locked;
+  return (
+    <View style={{ gap: space.sm, opacity: disabled ? 0.45 : 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+        <T style={{ fontFamily: font.bold, fontSize: 16 }}>{label}</T>
+        <View style={{ flex: 1, flexDirection: 'row', gap: 4 }}>{extra}</View>
+        <T style={{ fontFamily: font.bold, fontSize: 20 }}>
+          {Number(value.toFixed(digits))}
+          <T style={{ fontSize: 15, fontFamily: font.medium }}>{unit}</T>
+        </T>
+        {onToggleLock ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`${label} ${locked ? '고정 해제' : '고정'}`} onPress={onToggleLock} hitSlop={8} style={[styles.lock, locked && { backgroundColor: color.charcoal }]}>
+            <LockIcon locked={!!locked} />
+          </Pressable>
+        ) : null}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <RoundBtn label="−" strong onPress={() => set(value - big)} disabled={off} />
+        <RoundBtn label="−" onPress={() => set(value - small)} disabled={off} />
+        <View style={{ flex: 1, paddingHorizontal: 6 }}>
+          <Slider value={value} min={min} max={max} step={small} onChange={(v) => set(v)} disabled={off} />
+        </View>
+        <RoundBtn label="+" onPress={() => set(value + small)} disabled={off} />
+        <RoundBtn label="+" strong onPress={() => set(value + big)} disabled={off} />
+      </View>
+    </View>
+  );
+}
+
+function RoundBtn({ label, onPress, strong, disabled }: { label: string; onPress: () => void; strong?: boolean; disabled?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label === '+' ? '올리기' : '내리기'} ${strong ? '크게' : '조금'}`}
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.round, strong ? { backgroundColor: color.line } : null, pressed && { backgroundColor: color.yellow }, disabled && { opacity: 0.4 }]}
+    >
+      <Text style={{ fontFamily: font.bold, fontSize: strong ? 22 : 18, color: strong ? color.charcoal : color.muted, lineHeight: 24 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function LockIcon({ locked }: { locked: boolean }) {
+  const c = locked ? color.yellow : color.muted;
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <View style={{ width: 10, height: 8, borderWidth: 2, borderBottomWidth: 0, borderColor: c, borderTopLeftRadius: 5, borderTopRightRadius: 5, marginBottom: -1, transform: [{ translateX: locked ? 0 : 3 }] }} />
+      <View style={{ width: 14, height: 10, borderRadius: 2, backgroundColor: c }} />
+    </View>
+  );
 }
 
 export const fmt = {
@@ -217,6 +335,12 @@ const styles = StyleSheet.create({
   kv: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, gap: space.md },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: space.lg, gap: space.sm, backgroundColor: color.paper, borderTopWidth: 1, borderTopColor: color.line },
   stepBar: { flexDirection: 'row', gap: 6 },
+  slider: { height: 36, justifyContent: 'center' },
+  sliderTrack: { height: 8, borderRadius: 4, backgroundColor: color.line, overflow: 'hidden' },
+  sliderFill: { height: 8, backgroundColor: color.yellow },
+  sliderThumb: { position: 'absolute', top: 5, width: 26, height: 26, borderRadius: 13, backgroundColor: color.surface, borderWidth: 1, borderColor: color.warm, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 3 },
+  round: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
+  lock: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center', backgroundColor: color.surface },
   badge: { paddingHorizontal: 6, borderRadius: 4, alignSelf: 'flex-start' },
   step: { flex: 1, height: 36, borderRadius: radius.sm, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
 });

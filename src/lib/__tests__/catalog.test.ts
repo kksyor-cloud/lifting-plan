@@ -23,7 +23,7 @@ describe('filterCatalog', () => {
     const mid = filterCatalog(CATALOG, { ...DEFAULT_FILTER, band: 'b2' });
     expect(mid.every((e) => e.classTon >= 26 && e.classTon < 51)).toBe(true);
     expect(filterCatalog(CATALOG, { ...DEFAULT_FILTER, includeDiscontinued: false }).every((e) => e.current)).toBe(true);
-    // 공백·점·하이픈 무시
+    // ignore spaces, dots and hyphens
     expect(filterCatalog(CATALOG, { ...DEFAULT_FILTER, query: 'ltm1050 3.1' }).map((e) => e.model)).toContain('LTM 1050-3.1');
     expect(filterCatalog(CATALOG, { ...DEFAULT_FILTER, query: 'gr700n' }).some((e) => e.model === 'GR-700N')).toBe(true);
   });

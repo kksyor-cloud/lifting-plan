@@ -1,6 +1,6 @@
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-// 앱 아이콘(이동식 크레인)과 같은 그림. 원본: branding/icons/liftnote-icon.svg
+// Same drawing as the app icon (mobile crane). Source: branding/icons/liftnote-icon.svg
 export function CraneMark({ size = 48 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 1024 1024">

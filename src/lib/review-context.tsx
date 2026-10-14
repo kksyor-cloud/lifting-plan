@@ -1,7 +1,8 @@
 import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
-import { DEFAULT_INPUT, review, ReviewInput, ReviewResult } from './calc';
+import { autoDistance, DEFAULT_INPUT, Locks, review, ReviewInput, ReviewResult, stepCrane } from './calc';
+import { findCrane } from './cranes';
 
-// 검토 한 건의 단일 상태. 모든 화면은 같은 input 에서 계산한 result 를 읽는다.
+// Single state for one review. Every screen reads the result computed from the same input.
 type Ctx = {
   input: ReviewInput;
   setInput: (patch: Partial<ReviewInput>) => void;
@@ -9,26 +10,54 @@ type Ctx = {
   result: ReviewResult;
   craneId: string | null;
   setCraneId: (id: string) => void;
+  /** Locks: locked values are not changed by auto-calc */
+  locks: Locks;
+  toggleLock: (k: keyof Locks) => void;
+  /** UP(+1) / DN(-1): switch to the next larger/smaller crane. false at either end */
+  step: (dir: 1 | -1) => boolean;
+  /** Max-distance auto-calc. If found, updates setback and working radius and returns true */
+  auto: () => boolean;
 };
 
 const ReviewContext = createContext<Ctx | null>(null);
 
+const NO_LOCKS: Locks = { setback: false, radius: false };
+
 export function ReviewProvider({ children }: { children: ReactNode }) {
   const [input, setInputState] = useState<ReviewInput>(DEFAULT_INPUT);
   const [chosen, setChosen] = useState<string | null>(null);
+  const [locks, setLocks] = useState<Locks>(NO_LOCKS);
   const result = useMemo(() => review(input), [input]);
+  // If the user has not picked one, use the recommended crane (the smallest that meets the conditions).
+  const craneId = chosen ?? result.recommendedId ?? result.evals[result.evals.length - 1]?.crane.id ?? null;
 
   const value: Ctx = {
     input,
     setInput: (patch) => setInputState((prev) => ({ ...prev, ...patch })),
-    reset: (next = DEFAULT_INPUT, craneId = null) => {
+    reset: (next = DEFAULT_INPUT, id = null) => {
       setInputState(next);
-      setChosen(craneId);
+      setChosen(id);
+      setLocks(NO_LOCKS);
     },
     result,
-    // 사용자가 고르지 않았으면 추천 장비를 쓴다.
-    craneId: chosen ?? result.recommendedId,
+    craneId,
     setCraneId: setChosen,
+    locks,
+    toggleLock: (k) => setLocks((l) => ({ ...l, [k]: !l[k] })),
+    step: (dir) => {
+      const next = stepCrane(craneId, dir);
+      if (!next) return false;
+      setChosen(next.id);
+      return true;
+    },
+    auto: () => {
+      const crane = craneId ? findCrane(craneId) : undefined;
+      const plan = crane ? autoDistance(crane, input, locks) : null;
+      if (!crane || !plan) return false;
+      setChosen(crane.id);
+      setInputState((prev) => ({ ...prev, setback: plan.setback, radius: plan.radius }));
+      return true;
+    },
   };
   return <ReviewContext.Provider value={value}>{children}</ReviewContext.Provider>;
 }

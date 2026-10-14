@@ -1,133 +1,145 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
-import { Button, Card, Chip, Footer, NumberField, Section, StepBar, T } from '@/components/ui';
-import { BEARING_PRESETS, PAD_PRESETS } from '@/lib/ground';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Button, Footer, SliderField, T } from '@/components/ui';
+import { LoadDims } from '@/lib/calc';
 import { useReview } from '@/lib/review-context';
 import { color, font, radius, space } from '@/theme';
 
-// 구간 칩: 누르면 구간 대표값으로 맞추고, 세부 값은 ± 버튼으로 조정한다.
-const HEIGHT_BANDS = [
-  { label: '저층 ~20m', value: 15 },
-  { label: '중층 20~50m', value: 30 },
-  { label: '고층 50m~', value: 60 },
+// Fixed conditions: pick a rough range with chips, then fine-tune with the slider and ± buttons.
+type Band = { key: string; sub: string; min: number; max: number; value: number };
+const HEIGHT_BANDS: Band[] = [
+  { key: '저', sub: '0-20', min: 0, max: 20, value: 15 },
+  { key: '중', sub: '20-50', min: 20, max: 50, value: 30 },
+  { key: '고', sub: '50-100', min: 50, max: 100, value: 60 },
 ];
-const WEIGHT_BANDS = [
-  { label: '~5t', value: 1 },
-  { label: '5~15t', value: 8 },
-  { label: '15~30t', value: 20 },
-  { label: '30t~', value: 40 },
+const WEIGHT_BANDS: Band[] = [
+  { key: '저', sub: '0.1-5', min: 0, max: 5, value: 1 },
+  { key: '중', sub: '5-15', min: 5, max: 15, value: 8 },
+  { key: '고', sub: '15-30', min: 15, max: 30, value: 20 },
+  { key: 'S', sub: '30-100', min: 30, max: 100, value: 40 },
+];
+const bandOf = (bands: Band[], v: number) => bands.find((b) => v < b.max) ?? bands[bands.length - 1];
+
+type DimKey = keyof LoadDims;
+const DIM_FIELDS: { key: DimKey; label: string }[] = [
+  { key: 'length', label: '가로 (m)' },
+  { key: 'width', label: '세로 (m)' },
+  { key: 'height', label: '높이 (m)' },
 ];
 
 export default function InputScreen() {
   const { input, setInput } = useReview();
-  const dims = input.dims;
+  // Dimensions are used in the calculation only when all three fields are filled. In-progress text is held separately.
+  const [dimText, setDimText] = useState<Record<DimKey, string>>(() => ({
+    length: input.dims ? String(input.dims.length) : '',
+    width: input.dims ? String(input.dims.width) : '',
+    height: input.dims ? String(input.dims.height) : '',
+  }));
+  const setDim = (k: DimKey, text: string) => {
+    const next = { ...dimText, [k]: text };
+    setDimText(next);
+    const nums = DIM_FIELDS.map((f) => Number(next[f.key].replace(',', '.')));
+    const ok = nums.every((n) => Number.isFinite(n) && n > 0) && DIM_FIELDS.every((f) => next[f.key].trim() !== '');
+    setInput({ dims: ok ? { length: nums[0], width: nums[1], height: nums[2] } : null });
+  };
+  const hb = bandOf(HEIGHT_BANDS, input.buildingHeight);
+  const wb = bandOf(WEIGHT_BANDS, input.loadWeight);
 
   return (
     <View style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <StepBar step={0} />
 
-        <Section label="현장">
-          <TextInput
-            accessibilityLabel="현장명"
-            placeholder="현장명 (예: ○○ 물류센터 신축공사)"
-            placeholderTextColor={color.warm}
-            value={input.siteName}
-            onChangeText={(siteName) => setInput({ siteName })}
-            style={styles.text}
-          />
-        </Section>
+        <T variant="label">고정 조건</T>
+        <SliderField
+          label="건물 높이"
+          unit="m"
+          value={input.buildingHeight}
+          min={1}
+          max={100}
+          big={5}
+          small={1}
+          digits={0}
+          onChange={(buildingHeight) => setInput({ buildingHeight })}
+          extra={HEIGHT_BANDS.map((b) => (
+            <BandChip key={b.key} band={b} active={b === hb} onPress={() => setInput({ buildingHeight: b.value })} />
+          ))}
+        />
+        <SliderField
+          label="자재 중량"
+          unit="t"
+          value={input.loadWeight}
+          min={0.1}
+          max={100}
+          big={1}
+          small={0.1}
+          onChange={(loadWeight) => setInput({ loadWeight })}
+          extra={WEIGHT_BANDS.map((b) => (
+            <BandChip key={b.key} band={b} active={b === wb} onPress={() => setInput({ loadWeight: b.value })} />
+          ))}
+        />
 
-        <Section label="건물 높이">
-          <View style={styles.chips}>
-            {HEIGHT_BANDS.map((b) => (
-              <Chip key={b.label} label={b.label} active={bandOf(HEIGHT_BANDS, input.buildingHeight) === b.label} onPress={() => setInput({ buildingHeight: b.value })} />
+        <View style={{ gap: space.sm, marginTop: space.md }}>
+          <T style={{ fontFamily: font.bold, fontSize: 17 }}>중량물 규격 (선택사항)</T>
+          <T variant="caption">입력하면 다이어그램에 자재 크기가 그려지고 슬링을 계산합니다 (긴 변 기준).</T>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {DIM_FIELDS.map((f, i) => (
+              <View key={f.key} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TextInput
+                  accessibilityLabel={f.label}
+                  placeholder={f.label}
+                  placeholderTextColor={color.warm}
+                  keyboardType="decimal-pad"
+                  value={dimText[f.key]}
+                  onChangeText={(t) => setDim(f.key, t)}
+                  style={styles.dim}
+                />
+                {i < 2 ? <T tone={color.muted}>×</T> : null}
+              </View>
             ))}
           </View>
-          <NumberField label="건물 높이" unit="m" value={input.buildingHeight} onChange={(buildingHeight) => setInput({ buildingHeight })} big={5} small={0.5} min={1} max={150} />
-        </Section>
+        </View>
 
-        <Section label="자재 중량">
-          <View style={styles.chips}>
-            {WEIGHT_BANDS.map((b) => (
-              <Chip key={b.label} label={b.label} active={bandOf(WEIGHT_BANDS, input.loadWeight) === b.label} onPress={() => setInput({ loadWeight: b.value })} />
-            ))}
-          </View>
-          <NumberField label="자재 중량" unit="t" value={input.loadWeight} onChange={(loadWeight) => setInput({ loadWeight })} big={1} small={0.1} min={0.1} max={100} />
-          <NumberField
-            label="줄걸이 용구 중량"
-            hint="슬링·샤클 등. 하중률에 포함"
-            unit="t"
-            value={input.riggingWeight}
-            onChange={(riggingWeight) => setInput({ riggingWeight })}
-            big={0.1}
-            small={0.01}
-            min={0}
-            max={5}
-            digits={2}
-          />
-        </Section>
-
-        <Section label="배치">
-          <NumberField label="건물 이격거리" hint="크레인 중심 ~ 외벽" unit="m" value={input.setback} onChange={(setback) => setInput({ setback })} big={1} small={0.5} min={2} max={60} />
-          <NumberField label="도달거리" hint="외벽 ~ 인양 지점" unit="m" value={input.reach} onChange={(reach) => setInput({ reach })} big={1} small={0.5} min={0} max={60} />
-          <T variant="caption">작업반경 = 이격거리 + 도달거리 = {(input.setback + input.reach).toFixed(1)} m</T>
-        </Section>
-
-        <Section label="지반 (아웃리거 받침)">
-          <View style={styles.chips}>
-            {BEARING_PRESETS.map((b) => (
-              <Chip key={b.label} label={`${b.label} ${b.value}`} active={input.groundBearing === b.value} onPress={() => setInput({ groundBearing: b.value })} />
-            ))}
-          </View>
-          <NumberField label="허용 지지력" hint="지반조사 값이 있으면 그 값" unit="kN/m²" value={input.groundBearing} onChange={(groundBearing) => setInput({ groundBearing })} big={50} small={10} min={10} max={2000} digits={0} />
-          <View style={styles.chips}>
-            {PAD_PRESETS.map((p) => (
-              <Chip key={p} label={`받침판 ${p.toFixed(1)}m`} active={input.padSize === p} onPress={() => setInput({ padSize: p })} />
-            ))}
-          </View>
-        </Section>
-
-        <Section
-          label="자재 규격 (선택)"
-          right={
-            <Switch
-              accessibilityLabel="자재 규격 입력"
-              value={dims !== null}
-              onValueChange={(on) => setInput({ dims: on ? { length: 4, width: 2, height: 1 } : null })}
-              trackColor={{ true: color.yellow, false: color.line }}
-              thumbColor={color.surface}
-            />
-          }
-        >
-          {dims ? (
-            <Card>
-              <NumberField label="가로 (긴 변)" unit="m" value={dims.length} onChange={(length) => setInput({ dims: { ...dims, length } })} big={1} small={0.1} min={0.1} max={30} />
-              <NumberField label="세로" unit="m" value={dims.width} onChange={(width) => setInput({ dims: { ...dims, width } })} big={1} small={0.1} min={0.1} max={30} />
-              <NumberField label="높이" unit="m" value={dims.height} onChange={(height) => setInput({ dims: { ...dims, height } })} big={1} small={0.1} min={0.1} max={30} />
-              <NumberField label="줄걸이 각도" hint="수평 기준, 60° 권장" unit="°" value={input.slingAngle} onChange={(slingAngle) => setInput({ slingAngle })} big={5} small={1} min={30} max={80} digits={0} />
-            </Card>
-          ) : (
-            <T variant="caption">규격을 넣으면 슬링 길이와 1가닥 장력을 계산하고, 필요한 붐 높이에 반영합니다. 넣지 않으면 자재·줄걸이 높이를 2.5m로 가정합니다.</T>
-          )}
-        </Section>
+        <SliderField
+          label="줄걸이 각도"
+          unit="°"
+          value={input.slingAngle}
+          min={30}
+          max={80}
+          big={5}
+          small={1}
+          digits={0}
+          disabled={!input.dims}
+          onChange={(slingAngle) => setInput({ slingAngle })}
+        />
+        <T variant="caption" style={{ marginTop: -space.md }}>
+          {input.dims ? '수평 기준 각도입니다. 60° 이상을 권장합니다.' : '가로, 세로, 높이를 모두 입력하면 조절할 수 있습니다.'}
+        </T>
       </ScrollView>
       <Footer>
-        <Button label="장비 검토하기" onPress={() => router.push('/review/select')} />
+        <Button label="▶  검토 시작" kind="yellow" onPress={() => router.push('/review/settings')} />
       </Footer>
     </View>
   );
 }
 
-function bandOf(bands: { label: string; value: number }[], v: number): string {
-  // 각 칩의 경계값은 다음 칩 대표값과의 중간이 아니라 라벨 구간을 따른다.
-  const edges = bands === HEIGHT_BANDS ? [20, 50] : [5, 15, 30];
-  const i = edges.findIndex((e) => v < e);
-  return bands[i === -1 ? bands.length - 1 : i].label;
+function BandChip({ band, active, onPress }: { band: Band; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${band.key} ${band.sub}`}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={[styles.band, active && { backgroundColor: color.yellow, borderColor: color.yellow }]}
+    >
+      <Text style={{ fontFamily: font.bold, fontSize: 13, color: color.charcoal }}>{band.key}</Text>
+      <Text style={{ fontFamily: font.body, fontSize: 9, color: active ? color.charcoal : color.muted }}>{band.sub}</Text>
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
   body: { padding: 16, gap: space.xl, paddingBottom: 120 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  text: { fontFamily: font.body, fontSize: 16, color: color.charcoal, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.sm, paddingHorizontal: space.md, height: 48 },
+  band: { minWidth: 38, paddingHorizontal: 4, height: 38, borderRadius: radius.sm, borderWidth: 1, borderColor: color.line, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
+  dim: { flex: 1, minWidth: 0, fontFamily: font.body, fontSize: 15, color: color.charcoal, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.sm, paddingHorizontal: space.sm, height: 48 },
 });

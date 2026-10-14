@@ -9,7 +9,7 @@ describe('groundCheck', () => {
     expect(g.reaction).toBeCloseTo(REACTION_SHARE * 27.3, 6);
     expect(g.pressure).toBeCloseTo((g.reaction * 9.80665) / 1.44, 6);
     expect(g.ratio).toBeCloseTo(g.pressure / 150, 6);
-    // 필요 받침판에서 접지압이 허용 지지력과 같아진다
+    // At the required pad size, ground pressure equals the allowable bearing capacity
     expect(groundCheck(26, 1.3, 150, g.requiredPad)!.ratio).toBeCloseTo(1, 6);
   });
   it('grades ok / warn / no by pressure ratio', () => {

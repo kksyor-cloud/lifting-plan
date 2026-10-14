@@ -1,0 +1,72 @@
+# Builds the Android APK and publishes it to the GitHub release "apk-latest".
+# Open the Releases page on a phone, download the APK and install it (installing from unknown sources must be allowed).
+name: Android APK
+
+on:
+  push:
+    branches: [main, ci/android-apk]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test -- --ci
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+        env:
+          CI: 1
+
+      # The release build is signed with the debug key (Expo template default). It is for direct install, not for the Play Store.
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk "out/lifting-plan-${GITHUB_SHA::7}.apk"
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lifting-plan-apk
+          path: out/*.apk
+
+      - name: Publish to release apk-latest
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: Lifting Plan APK (latest)
+          prerelease: true
+          make_latest: false
+          body: |
+            Built from branch ${{ github.ref_name }} at commit ${{ github.sha }}.
+            Download the APK below on an Android phone and install it. Installing apps from unknown sources must be allowed.
+          files: out/*.apk

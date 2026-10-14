@@ -1,0 +1,233 @@
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Icon } from '@/components/Icon';
+import { T } from '@/components/ui';
+import { CATALOG, Maker, MAKERS, tonLabel } from '@/lib/catalog';
+import { CRANES, findCrane } from '@/lib/cranes';
+import { color, font, radius, space } from '@/theme';
+
+// Crane Fit style picker: type -> maker -> model, maker and model as pull-down sheets.
+// Only models with a load chart can be picked; the rest of the maker's catalog is listed greyed out.
+const CHARTED = new Set(CRANES.map((c) => c.id));
+const countFor = (m: Maker) => CRANES.filter((c) => c.maker === m).length;
+
+export function CranePicker({
+  craneId,
+  onSelect,
+  onStep,
+  canUp,
+  canDown,
+}: {
+  craneId: string;
+  onSelect: (id: string) => void;
+  /** UP(+1) / DN(-1) */
+  onStep: (dir: 1 | -1) => void;
+  canUp: boolean;
+  canDown: boolean;
+}) {
+  const crane = findCrane(craneId);
+  const [maker, setMaker] = useState<Maker>((crane?.maker as Maker) ?? 'Tadano');
+  const [open, setOpen] = useState(false);
+  const [makerOpen, setMakerOpen] = useState(false);
+
+  // Follow the crane when it changes elsewhere (UP/DN, comparison list).
+  useEffect(() => {
+    if (crane) setMaker(crane.maker as Maker);
+  }, [crane?.id]);
+
+  const models = useMemo(() => {
+    const all = CATALOG.filter((e) => e.maker === maker).sort((a, b) => a.classTon - b.classTon || a.model.localeCompare(b.model));
+    return [...all.filter((e) => CHARTED.has(e.id)), ...all.filter((e) => !CHARTED.has(e.id))];
+  }, [maker]);
+  const available = countFor(maker);
+  const showingCurrent = crane?.maker === maker;
+
+  return (
+    <View style={{ gap: space.sm }}>
+      <View style={styles.grid}>
+        <Seg label="이동식 크레인" active />
+        <StepBtn label="▲  UP" tone={color.ok} bg="#E3F3E8" disabled={!canUp} onPress={() => onStep(1)} />
+      </View>
+      <View style={styles.grid}>
+        <Seg label="이동타워 크레인" sub="준비 중" disabled />
+        <StepBtn label="▼  DN" tone={color.no} bg="#FBE4E4" disabled={!canDown} onPress={() => onStep(-1)} />
+      </View>
+      <View style={styles.grid}>
+        <Pressable accessibilityRole="button" accessibilityLabel="제조사 선택" onPress={() => setMakerOpen(true)} style={[styles.select, { flex: 1 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cap}>제조사</Text>
+            <Text numberOfLines={1} style={styles.val}>
+              {MAKERS.find((m) => m.key === maker)?.label}
+            </Text>
+          </View>
+          <Icon name="down" size={18} />
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="장비명 선택" onPress={() => setOpen(true)} style={[styles.select, { flex: 1.6 }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cap}>장비명</Text>
+            <Text numberOfLines={1} style={[styles.val, !showingCurrent && { color: color.warm }]}>
+              {showingCurrent && crane ? `${tonLabel(crane.classTon)} / ${crane.model}` : available ? '장비를 고르세요' : '하중표 등록 기종 없음'}
+            </Text>
+          </View>
+          <Icon name="down" size={18} />
+        </Pressable>
+      </View>
+
+      <MakerSheet
+        open={makerOpen}
+        current={maker}
+        onClose={() => setMakerOpen(false)}
+        onPick={(m) => {
+          setMaker(m);
+          setMakerOpen(false);
+        }}
+      />
+      <ModelSheet
+        open={open}
+        title={`${MAKERS.find((m) => m.key === maker)?.label} 장비`}
+        models={models}
+        currentId={craneId}
+        onClose={() => setOpen(false)}
+        onPick={(id) => {
+          onSelect(id);
+          setOpen(false);
+        }}
+      />
+    </View>
+  );
+}
+
+function MakerSheet({ open, current, onClose, onPick }: { open: boolean; current: Maker; onClose: () => void; onPick: (m: Maker) => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable accessibilityLabel="닫기" style={styles.backdrop} onPress={onClose} />
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
+        <View style={styles.sheetHead}>
+          <T style={{ fontFamily: font.bold, fontSize: 17 }}>제조사 선택</T>
+          <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10}>
+            <T style={{ fontFamily: font.bold }}>닫기</T>
+          </Pressable>
+        </View>
+        <View style={{ padding: space.lg, paddingTop: space.sm, gap: space.sm }}>
+          {MAKERS.map((m) => {
+            const n = countFor(m.key);
+            const total = CATALOG.filter((e) => e.maker === m.key).length;
+            const active = m.key === current;
+            return (
+              <Pressable key={m.key} accessibilityRole="radio" accessibilityState={{ selected: active }} onPress={() => onPick(m.key)} style={[styles.item, active && styles.itemActive]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: 16, color: color.charcoal }}>{m.label}</Text>
+                  <Text style={{ fontFamily: font.body, fontSize: 12, color: color.muted }}>
+                    {n ? `하중표 ${n}종` : '하중표 준비 중'} · 제원 {total}종
+                  </Text>
+                </View>
+                {active ? <Text style={{ fontFamily: font.bold, color: color.yellowDeep }}>선택됨</Text> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ModelSheet({
+  open,
+  title,
+  models,
+  currentId,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  title: string;
+  models: typeof CATALOG;
+  currentId: string;
+  onClose: () => void;
+  onPick: (id: string) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const charted = models.filter((e) => CHARTED.has(e.id)).length;
+  return (
+    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable accessibilityLabel="닫기" style={styles.backdrop} onPress={onClose} />
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
+        <View style={styles.sheetHead}>
+          <T style={{ fontFamily: font.bold, fontSize: 17 }}>{title}</T>
+          <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10}>
+            <T style={{ fontFamily: font.bold }}>닫기</T>
+          </Pressable>
+        </View>
+        <T variant="caption" style={{ paddingHorizontal: space.lg }}>
+          하중표가 등록된 {charted}개 기종만 검토에 쓸 수 있습니다. 회색 기종은 제원만 있습니다.
+        </T>
+        <FlatList
+          data={models}
+          keyExtractor={(e) => e.id}
+          contentContainerStyle={{ padding: space.lg, gap: space.sm }}
+          renderItem={({ item, index }) => {
+            const ok = CHARTED.has(item.id);
+            const active = item.id === currentId;
+            const header = index === charted && charted < models.length;
+            return (
+              <View style={{ gap: space.sm }}>
+                {header ? <T variant="label" style={{ marginTop: space.md }}>하중표 준비 중</T> : null}
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active, disabled: !ok }}
+                  disabled={!ok}
+                  onPress={() => onPick(item.id)}
+                  style={[styles.item, active && styles.itemActive, !ok && { opacity: 0.45 }]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: font.bold, fontSize: 16, color: color.charcoal }}>
+                      {tonLabel(item.classTon)} / {item.model}
+                    </Text>
+                    <Text style={{ fontFamily: font.body, fontSize: 12, color: color.muted }}>
+                      {item.type}
+                      {item.current ? '' : ' · 단종'}
+                    </Text>
+                  </View>
+                  {active ? <Text style={{ fontFamily: font.bold, color: color.yellowDeep }}>선택됨</Text> : null}
+                </Pressable>
+              </View>
+            );
+          }}
+        />
+      </View>
+    </Modal>
+  );
+}
+
+function Seg({ label, sub, active, disabled }: { label: string; sub?: string; active?: boolean; disabled?: boolean }) {
+  return (
+    <View accessibilityRole="button" accessibilityState={{ selected: !!active, disabled: !!disabled }} style={[styles.seg, active ? { backgroundColor: color.yellow } : { backgroundColor: '#EFEAE0' }]}>
+      <Text style={{ fontFamily: font.bold, fontSize: 15, color: disabled ? color.warm : color.charcoal }}>{label}</Text>
+      {sub ? <Text style={{ fontFamily: font.body, fontSize: 10, color: color.warm }}>{sub}</Text> : null}
+    </View>
+  );
+}
+
+function StepBtn({ label, tone, bg, onPress, disabled }: { label: string; tone: string; bg: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label.includes('UP') ? '한 단계 큰 장비' : '한 단계 작은 장비'} onPress={onPress} disabled={disabled} style={({ pressed }) => [styles.step, { backgroundColor: bg }, pressed && { opacity: 0.75 }, disabled && { opacity: 0.4 }]}>
+      <Text style={{ fontFamily: font.bold, fontSize: 17, color: tone }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  grid: { flexDirection: 'row', gap: space.sm },
+  seg: { flex: 1.6, height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  step: { flex: 1, height: 52, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  cap: { fontFamily: font.body, fontSize: 11, color: color.muted },
+  val: { fontFamily: font.bold, fontSize: 15, color: color.charcoal },
+  select: { flexDirection: 'row', alignItems: 'center', gap: space.sm, height: 56, paddingHorizontal: space.md, borderRadius: radius.md, borderWidth: 1.5, borderColor: color.charcoal, backgroundColor: color.surface },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  sheet: { maxHeight: '75%', backgroundColor: color.paper, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+  sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: space.lg, paddingBottom: space.sm },
+  item: { flexDirection: 'row', alignItems: 'center', padding: space.md, backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.md },
+  itemActive: { borderColor: color.charcoal, borderLeftWidth: 6, borderLeftColor: color.yellow },
+});
