@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { T } from '@/components/ui';
 import { CATALOG, Maker, MAKERS, tonLabel } from '@/lib/catalog';
 import { CRANES, findCrane } from '@/lib/cranes';
 import { color, font, radius, space } from '@/theme';
 
-// Crane Fit style picker: type -> maker -> model.
+// Crane Fit style picker: type -> maker -> model, maker and model as pull-down sheets.
 // Only models with a load chart can be picked; the rest of the maker's catalog is listed greyed out.
 const CHARTED = new Set(CRANES.map((c) => c.id));
 const countFor = (m: Maker) => CRANES.filter((c) => c.maker === m).length;
@@ -15,6 +15,7 @@ export function CranePicker({ craneId, onSelect }: { craneId: string; onSelect: 
   const crane = findCrane(craneId);
   const [maker, setMaker] = useState<Maker>((crane?.maker as Maker) ?? 'Tadano');
   const [open, setOpen] = useState(false);
+  const [makerOpen, setMakerOpen] = useState(false);
 
   // Follow the crane when it changes elsewhere (UP/DN, comparison list).
   useEffect(() => {
@@ -35,24 +36,13 @@ export function CranePicker({ craneId, onSelect }: { craneId: string; onSelect: 
         <Seg label="이동타워 크레인" sub="준비 중" disabled />
       </Row>
       <Row label="제조사">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-          {MAKERS.map((m) => {
-            const n = countFor(m.key);
-            const active = m.key === maker;
-            return (
-              <Pressable
-                key={m.key}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => setMaker(m.key)}
-                style={[styles.maker, active && { backgroundColor: color.charcoal, borderColor: color.charcoal }]}
-              >
-                <Text style={{ fontFamily: font.bold, fontSize: 13, color: active ? '#FFFFFF' : n ? color.charcoal : color.warm }}>{m.label}</Text>
-                <Text style={{ fontFamily: font.mono, fontSize: 11, color: active ? color.yellow : color.muted }}>{n}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <Pressable accessibilityRole="button" accessibilityLabel="제조사 선택" onPress={() => setMakerOpen(true)} style={styles.select}>
+          <Text numberOfLines={1} style={{ flex: 1, fontFamily: font.bold, fontSize: 15, color: color.charcoal }}>
+            {MAKERS.find((m) => m.key === maker)?.label}
+          </Text>
+          <Text style={{ fontFamily: font.mono, fontSize: 12, color: color.muted }}>{available ? `하중표 ${available}종` : '하중표 없음'}</Text>
+          <Text style={{ color: color.charcoal, fontSize: 14 }}>▼</Text>
+        </Pressable>
       </Row>
       <Row label="장비명">
         <Pressable accessibilityRole="button" accessibilityLabel="장비명 선택" onPress={() => setOpen(true)} style={styles.select}>
@@ -63,6 +53,15 @@ export function CranePicker({ craneId, onSelect }: { craneId: string; onSelect: 
         </Pressable>
       </Row>
 
+      <MakerSheet
+        open={makerOpen}
+        current={maker}
+        onClose={() => setMakerOpen(false)}
+        onPick={(m) => {
+          setMaker(m);
+          setMakerOpen(false);
+        }}
+      />
       <ModelSheet
         open={open}
         title={`${MAKERS.find((m) => m.key === maker)?.label} 장비`}
@@ -75,6 +74,41 @@ export function CranePicker({ craneId, onSelect }: { craneId: string; onSelect: 
         }}
       />
     </View>
+  );
+}
+
+function MakerSheet({ open, current, onClose, onPick }: { open: boolean; current: Maker; onClose: () => void; onPick: (m: Maker) => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable accessibilityLabel="닫기" style={styles.backdrop} onPress={onClose} />
+      <View style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
+        <View style={styles.sheetHead}>
+          <T style={{ fontFamily: font.bold, fontSize: 17 }}>제조사 선택</T>
+          <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10}>
+            <T style={{ fontFamily: font.bold }}>닫기</T>
+          </Pressable>
+        </View>
+        <View style={{ padding: space.lg, paddingTop: space.sm, gap: space.sm }}>
+          {MAKERS.map((m) => {
+            const n = countFor(m.key);
+            const total = CATALOG.filter((e) => e.maker === m.key).length;
+            const active = m.key === current;
+            return (
+              <Pressable key={m.key} accessibilityRole="radio" accessibilityState={{ selected: active }} onPress={() => onPick(m.key)} style={[styles.item, active && styles.itemActive]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: 16, color: color.charcoal }}>{m.label}</Text>
+                  <Text style={{ fontFamily: font.body, fontSize: 12, color: color.muted }}>
+                    {n ? `하중표 ${n}종` : '하중표 준비 중'} · 제원 {total}종
+                  </Text>
+                </View>
+                {active ? <Text style={{ fontFamily: font.bold, color: color.yellowDeep }}>선택됨</Text> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -167,7 +201,6 @@ function Seg({ label, sub, active, disabled }: { label: string; sub?: string; ac
 const styles = StyleSheet.create({
   box: { backgroundColor: color.surface, borderWidth: 1, borderColor: color.line, borderRadius: radius.md, padding: space.md, gap: space.md },
   seg: { flex: 1, height: 44, borderRadius: radius.sm, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
-  maker: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: color.line, backgroundColor: color.surface },
   select: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, height: 46, paddingHorizontal: space.md, borderRadius: radius.sm, borderWidth: 1.5, borderColor: color.charcoal, backgroundColor: color.surface },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: { maxHeight: '75%', backgroundColor: color.paper, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
